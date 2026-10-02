@@ -11,6 +11,8 @@ const { resolveBackend } = require('./src/router.js');
 const { collectGitScope, sanitizeGitRef } = require('./src/git.js');
 const { checkModelGovernance, resolveWorkspacePath } = require('./src/policy.js');
 const { createProgressReporter } = require('./src/progress.js');
+const { setDefaultBackend, loadConfig, CONFIG_FILE } = require('./src/config.js');
+const { inspectQuotas, checkAndRecordRateLimit } = require('./src/quota.js');
 const codexAdapter = require('./src/adapters/codex.js');
 const claudeAdapter = require('./src/adapters/claude.js');
 
@@ -42,6 +44,36 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: 'omniagent_set_default',
+        description:
+          'Set and persist your preferred default CLI agent backend in ~/.omniagent/config.json.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            backend: {
+              type: 'string',
+              enum: ['codex', 'claude', 'smart_quota'],
+              description: 'The preferred default backend: "codex", "claude", or "smart_quota" (routes dynamically based on 5h rolling window headroom).',
+            },
+          },
+          required: ['backend'],
+        },
+      },
+      {
+        name: 'omniagent_quota_status',
+        description:
+          'Check current 5-hour rolling limit headroom, usage percentages, and reset timestamps across active CLI backends without consuming generation tokens.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            refresh: {
+              type: 'boolean',
+              description: 'Force live refresh instead of reading cached telemetry.',
+            },
+          },
+        },
+      },
+      {
         name: 'omniagent_review',
         description:
           'Perform an automated code review on uncommitted changes, staged index, branches, or commits using local reasoning agents (Codex or Claude Code) in read-only sandbox mode.',
@@ -59,8 +91,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             backend: {
               type: 'string',
-              enum: ['auto', 'codex', 'claude'],
-              description: 'CLI agent backend to execute the review (default: "auto", prioritizing Codex then Claude).',
+              enum: ['auto', 'codex', 'claude', 'smart_quota'],
+              description: 'CLI agent backend to execute the review (default: "auto", respecting configured default or smart_quota).',
             },
             workspace_path: {
               type: 'string',
@@ -98,7 +130,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             backend: {
               type: 'string',
-              enum: ['auto', 'codex', 'claude'],
+              enum: ['auto', 'codex', 'claude', 'smart_quota'],
               description: 'CLI agent backend to consult (default: "auto").',
             },
             workspace_path: {
@@ -139,7 +171,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             backend: {
               type: 'string',
-              enum: ['auto', 'codex', 'claude'],
+              enum: ['auto', 'codex', 'claude', 'smart_quota'],
               description: 'CLI agent backend to analyze with (default: "auto").',
             },
             workspace_path: {
@@ -364,6 +396,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
+function formatExecutionResult(backendId, res, defaultText = 'No output received.') {
+  if (res.isError) {
+    const diagnostic = res.errorDetail || res.output;
+    if (diagnostic) {
+      checkAndRecordRateLimit(backendId, diagnostic);
+    }
+  }
+  return {
+    isError: res.isError,
+    content: [{ type: 'text', text: res.output || defaultText }],
+  };
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
   const { name, arguments: args = {} } = request.params;
   const abortSignal = extra && extra.signal;
@@ -376,6 +421,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
       const report = await runDoctor();
       return {
         content: [{ type: 'text', text: JSON.stringify(report, null, 2) }],
+      };
+    }
+
+    // 2. Set Default Backend
+    if (name === 'omniagent_set_default') {
+      const updated = setDefaultBackend(args.backend);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Successfully set default backend to '${args.backend}'. Saved to ${CONFIG_FILE}`,
+          },
+        ],
+      };
+    }
+
+    // 3. Quota Status
+    if (name === 'omniagent_quota_status') {
+      const quotas = await inspectQuotas(args.refresh === true);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(quotas, null, 2),
+          },
+        ],
       };
     }
 
@@ -453,10 +524,7 @@ ${scopeInfo.diff}`;
           onProgress,
         });
 
-        return {
-          isError: res.isError,
-          content: [{ type: 'text', text: res.output }],
-        };
+        return formatExecutionResult('claude', res);
       }
 
       // Codex backend
@@ -480,18 +548,12 @@ ${scopeInfo.diff}`;
           onProgress
         );
 
-        return {
-          isError: res.isError,
-          content: [{ type: 'text', text: res.output || 'Codex review reported clean status.' }],
-        };
+        return formatExecutionResult('codex', res, 'Codex review reported clean status.');
       }
 
       const reviewArgs = [...cliModelArgs, ...scopeInfo.nativeArgs];
       const res = await codexAdapter.executeCodexReview(reviewArgs, workspaceCwd, abortSignal, onProgress);
-      return {
-        isError: res.isError,
-        content: [{ type: 'text', text: res.output || 'Codex review reported clean status.' }],
-      };
+      return formatExecutionResult('codex', res, 'Codex review reported clean status.');
     }
 
     // --- Unified Consult & Legacy Codex Consult ---
@@ -531,7 +593,7 @@ ${args.specific_questions || 'General review and risk assessment'}`;
           abortSignal,
           onProgress,
         });
-        return { isError: res.isError, content: [{ type: 'text', text: res.output }] };
+        return formatExecutionResult('claude', res);
       }
 
       const effort = codexAdapter.normalizeReasoningEffort(args.reasoning_effort, 'medium');
@@ -544,7 +606,7 @@ ${args.specific_questions || 'General review and risk assessment'}`;
         abortSignal,
         onProgress
       );
-      return { isError: res.isError, content: [{ type: 'text', text: res.output || 'No output received.' }] };
+      return formatExecutionResult('codex', res);
     }
 
     // --- Unified Analyze & Legacy Codex Analyze ---
@@ -587,7 +649,7 @@ ${filesContext}`;
           abortSignal,
           onProgress,
         });
-        return { isError: res.isError, content: [{ type: 'text', text: res.output }] };
+        return formatExecutionResult('claude', res);
       }
 
       const effort = codexAdapter.normalizeReasoningEffort(args.reasoning_effort, 'high');
@@ -600,7 +662,7 @@ ${filesContext}`;
         abortSignal,
         onProgress
       );
-      return { isError: res.isError, content: [{ type: 'text', text: res.output || 'No output received.' }] };
+      return formatExecutionResult('codex', res);
     }
 
     // --- Legacy Codex Debug Error ---
@@ -645,7 +707,7 @@ ${filesContext}`;
         abortSignal,
         onProgress
       );
-      return { isError: res.isError, content: [{ type: 'text', text: res.output || 'No output received.' }] };
+      return formatExecutionResult('codex', res);
     }
 
     // --- Legacy Codex Implement ---
@@ -688,7 +750,7 @@ ${filesContext}`;
         abortSignal,
         onProgress
       );
-      return { isError: res.isError, content: [{ type: 'text', text: res.output || 'No output received.' }] };
+      return formatExecutionResult('codex', res);
     }
 
     throw new Error(`Unknown tool: ${name}`);

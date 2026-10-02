@@ -182,7 +182,8 @@ function executeClaude(prompt, options = {}) {
         const errorDetail = stderr.trim() || `Claude process exited with code ${code || signal}`;
         resolve({
           isError: true,
-          output: `Claude execution error (${code || signal}):\n${errorDetail}\n${output ? '\nPartial output:\n' + output : ''}`.trim(),
+          errorDetail,
+          output: `Claude execution error (${code || signal}):\n${errorDetail}${output ? '\nPartial output:\n' + output : ''}`.trim(),
           exitCode: code,
         });
       } else {

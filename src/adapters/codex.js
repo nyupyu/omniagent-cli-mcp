@@ -214,10 +214,11 @@ function executeCodex(args, stdinInput = null, cwd = process.cwd(), abortSignal 
       }
 
       if (code !== 0 || signal) {
-        const errorDetail = stderr.trim() || `Process exited with code ${code || signal}`;
+        const errorDetail = [stderr.trim(), stdout.trim()].filter(Boolean).join('\n') || `Process exited with code ${code || signal}`;
         resolve({
           isError: true,
-          output: `Codex execution error (${code || signal}):\n${errorDetail}\n${result ? '\nPartial output:\n' + result : ''}`.trim(),
+          errorDetail,
+          output: `Codex execution error (${code || signal}):\n${errorDetail}${result ? '\nPartial output:\n' + result : ''}`.trim(),
           exitCode: code,
         });
       } else {
@@ -317,7 +318,8 @@ function executeCodexReview(args, cwd = process.cwd(), abortSignal = null, onPro
         const errorDetail = stderr.trim() || `Review process exited with code ${code || signal}`;
         resolve({
           isError: true,
-          output: `Codex review error (${code || signal}):\n${errorDetail}\n${output ? '\nPartial review:\n' + output : ''}`.trim(),
+          errorDetail,
+          output: `Codex review error (${code || signal}):\n${errorDetail}${output ? '\nPartial review:\n' + output : ''}`.trim(),
           exitCode: code,
         });
       } else {
