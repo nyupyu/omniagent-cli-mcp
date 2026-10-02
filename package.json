@@ -1,11 +1,12 @@
 {
-  "name": "omniagent-cli-mcp",
+  "name": "omniagent-mcp",
   "displayName": "OmniAgent MCP - CLI Agent Bridge",
   "version": "1.0.0",
-  "description": "Bridge Codex CLI, Claude Code, and Gemini CLI through MCP in VS Code.",
+  "description": "Bridge Codex CLI, Claude Code CLI, and Gemini CLI through MCP in VS Code, Cursor, and Antigravity.",
   "main": "index.js",
   "bin": {
-    "omniagent-cli-mcp": "./index.js"
+    "omniagent": "./index.js",
+    "omniagent-mcp": "./index.js"
   },
   "repository": {
     "type": "git",
@@ -18,8 +19,22 @@
   "homepage": "https://oki.dev",
   "license": "MIT",
   "type": "commonjs",
+  "files": [
+    "index.js",
+    "src/",
+    "assets/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bugs": {
+    "url": "https://github.com/nyupyu/omniagent-cli-mcp/issues"
+  },
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "cli",
