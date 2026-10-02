@@ -6,6 +6,26 @@
 
 An intelligent multi-agent orchestration bridge connecting IDEs (**VS Code**, **Cursor**, **Antigravity**) with local coding agent CLIs (**OpenAI Codex CLI**, **Claude Code**, and **Gemini CLI**) via the Model Context Protocol (MCP).
 
+---
+
+## ⚡ Prerequisites: Choose Your Coding Agent
+
+OmniAgent MCP connects to your local coding agents; **you only need at least one supported CLI installed and authenticated** in the environment where this server runs:
+
+| Provider | Supported Models | Installation | Interactive Sign-In |
+| :--- | :--- | :--- | :--- |
+| **OpenAI Codex** | Sol (6.1/6.0), Luna, Astra | `npm install -g @openai/codex` | `codex login` |
+| **Claude Code** | Claude 3.5 Sonnet / Opus | `npm install -g @anthropic-ai/claude-code` | `claude auth login` |
+| **Gemini CLI** | Gemini 2.0 / 2.5 Flash / Pro | `npm install -g @google/gemini-cli` | `gemini` (follow prompts) |
+
+> [!IMPORTANT]
+> **Strict User Consent & Privacy Policy**:
+> - **Zero Silent Downloads**: OmniAgent MCP **never** downloads, installs, or executes external packages in the background without your explicit knowledge and consent.
+> - **No Autonomous Package Execution**: Any external installation must be explicitly executed by the developer in the terminal.
+> - **Read-Only Sandbox Guard**: All diagnostic, review, analysis, and consultation tasks run in enforced **`read-only`** mode to protect your working tree from unintended edits.
+
+---
+
 ## Architecture
 
 This plugin establishes a **Maker–Checker (Builder–Auditor)** workflow:
