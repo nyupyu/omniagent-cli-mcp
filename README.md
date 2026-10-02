@@ -1,10 +1,10 @@
-# Codex MCP (OpenAI Codex Bridge)
+# OmniAgent MCP - CLI Agent Bridge
 
 <p align="center">
-  <img src="assets/logo.svg" width="128" height="128" alt="Codex Plugin Logo" />
+  <img src="assets/logo.svg" width="128" height="128" alt="OmniAgent MCP Logo" />
 </p>
 
-An intelligent multi-agent orchestration plugin bridging **Antigravity (Gemini)** with the local **OpenAI Codex CLI** via the Model Context Protocol (MCP).
+An intelligent multi-agent orchestration bridge connecting IDEs (**VS Code**, **Cursor**, **Antigravity**) with local coding agent CLIs (**OpenAI Codex CLI**, **Claude Code**, and **Gemini CLI**) via the Model Context Protocol (MCP).
 
 ## Architecture
 

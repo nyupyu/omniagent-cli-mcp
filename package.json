@@ -1,14 +1,15 @@
 {
-  "name": "codex-mcp",
+  "name": "omniagent-cli-mcp",
+  "displayName": "OmniAgent MCP - CLI Agent Bridge",
   "version": "1.0.0",
-  "description": "Model Context Protocol (MCP) server bridging AI assistants with OpenAI Codex CLI",
+  "description": "Bridge Codex CLI, Claude Code, and Gemini CLI through MCP in VS Code.",
   "main": "index.js",
   "bin": {
-    "codex-mcp": "./index.js"
+    "omniagent-cli-mcp": "./index.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nyupyu/codex-mcp.git"
+    "url": "https://github.com/nyupyu/omniagent-cli-mcp.git"
   },
   "author": {
     "name": "Oktawian Wybieralski",
@@ -21,12 +22,17 @@
     "start": "node index.js"
   },
   "keywords": [
-    "mcp",
+    "cli",
     "codex",
-    "openai",
-    "modelcontextprotocol",
+    "claude",
+    "claude-code",
+    "gemini",
+    "gemini-cli",
+    "mcp",
+    "agent",
+    "bridge",
     "code-review",
-    "debugging"
+    "multi-agent"
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0"

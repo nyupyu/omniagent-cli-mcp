@@ -309,7 +309,7 @@ process.on('SIGTERM', () => {
 
 const server = new Server(
   {
-    name: 'codex-mcp',
+    name: 'omniagent-cli-mcp',
     version: '1.0.0',
   },
   {
@@ -755,7 +755,7 @@ ${args.specific_questions || 'General review and risk assessment'}`;
 async function run() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('Codex MCP Server running on stdio');
+  console.error('OmniAgent MCP Server running on stdio');
 }
 
 run().catch((error) => {
