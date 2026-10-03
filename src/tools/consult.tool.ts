@@ -6,50 +6,57 @@ import * as claudeAdapter from '../adapters/claude.adapter.js';
 import { formatExecutionResult } from './common.js';
 
 export function getConsultToolDefinitions(codexConfig: any) {
+  const baseConsultSchema = {
+    type: 'object',
+    properties: {
+      proposal: {
+        type: 'string',
+        description: 'The proposed plan, architecture, or refactoring strategy to evaluate.',
+      },
+      specific_questions: {
+        type: 'string',
+        description: 'Specific concerns, trade-offs, or questions to address.',
+      },
+      backend: {
+        type: 'string',
+        enum: ['auto', 'codex', 'claude', 'smart_quota'],
+        description: 'CLI agent backend to consult (default: "auto").',
+      },
+      workspace_path: {
+        type: 'string',
+        description: 'Optional absolute path to workspace root.',
+      },
+      model: {
+        type: 'string',
+        description: 'Optional model override.',
+      },
+      reasoning_effort: {
+        type: 'string',
+        description: 'Reasoning depth level (default: "medium").',
+      },
+      user_confirmed: {
+        type: 'boolean',
+        description: 'Mandatory true confirmation if using top-tier models ("astra", "claude-3-opus").',
+      },
+      session_handle: {
+        type: 'string',
+        description: 'Optional persistent session handle from a previous turn to preserve full multi-turn context.',
+      },
+    },
+    required: ['proposal'],
+  };
+
   return [
     {
-      name: 'omniagent_consult',
+      name: 'synagent_consult',
       description:
         'Consult local reasoning agents (Codex or Claude Code) for a second opinion on architecture plans, refactoring strategies, or technical trade-offs.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          proposal: {
-            type: 'string',
-            description: 'The proposed plan, architecture, or refactoring strategy to evaluate.',
-          },
-          specific_questions: {
-            type: 'string',
-            description: 'Specific concerns, trade-offs, or questions to address.',
-          },
-          backend: {
-            type: 'string',
-            enum: ['auto', 'codex', 'claude', 'smart_quota'],
-            description: 'CLI agent backend to consult (default: "auto").',
-          },
-          workspace_path: {
-            type: 'string',
-            description: 'Optional absolute path to workspace root.',
-          },
-          model: {
-            type: 'string',
-            description: 'Optional model override.',
-          },
-          reasoning_effort: {
-            type: 'string',
-            description: 'Reasoning depth level (default: "medium").',
-          },
-          user_confirmed: {
-            type: 'boolean',
-            description: 'Mandatory true confirmation if using top-tier models ("astra", "claude-3-opus").',
-          },
-          session_handle: {
-            type: 'string',
-            description: 'Optional persistent session handle from a previous turn to preserve full multi-turn context.',
-          },
-        },
-        required: ['proposal'],
-      },
+      inputSchema: baseConsultSchema,
+    },
+    {
+      name: 'omniagent_consult',
+      description: 'Backward-compatible alias for synagent_consult.',
+      inputSchema: baseConsultSchema,
     },
     {
       name: 'codex_consult',

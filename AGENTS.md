@@ -1,4 +1,4 @@
-# OmniAgent — Agent & Contributor Guidelines (`AGENTS.md`)
+# SynAgent — Agent & Contributor Guidelines (`AGENTS.md`)
 
 This repository defines strict engineering practices, Git branching workflows, quality gates, and architectural conventions for all AI coding agents (Antigravity, Cursor, Codex, Claude Code) and human contributors.
 

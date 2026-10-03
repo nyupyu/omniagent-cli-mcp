@@ -116,7 +116,7 @@ function resolveWorkspacePath(rawPath) {
 	}
 	return process.cwd();
 }
-const GITHUB_NEW_ISSUE_BASE = `https://github.com/nyupyu/omniagent/issues/new`;
+const GITHUB_NEW_ISSUE_BASE = `https://github.com/nyupyu/synagent/issues/new`;
 const MAX_RAW_INPUT_LENGTH = 4096;
 function safeSlice(str, maxLength = 80) {
 	if (!str || typeof str !== "string") return "";
@@ -1150,12 +1150,17 @@ async function runDoctor() {
 //#endregion
 //#region src/tools/doctor.tool.ts
 const doctorToolDefinition = {
-	name: "omniagent_doctor",
-	description: "Comprehensive multi-agent diagnostic tool. Audits installations, paths, versions, and auth status of OpenAI Codex CLI, Claude Code CLI, and Gemini CLI without running silent background downloads.",
+	name: "synagent_doctor",
+	description: "Comprehensive cross-agent diagnostic tool. Audits installations, paths, versions, and auth status of OpenAI Codex CLI, Claude Code CLI, and Gemini CLI without running silent background downloads.",
 	inputSchema: {
 		type: "object",
 		properties: {}
 	}
+};
+const legacyDoctorToolDefinition = {
+	...doctorToolDefinition,
+	name: "omniagent_doctor",
+	description: "Backward-compatible alias for synagent_doctor."
 };
 const codexStatusToolDefinition = {
 	name: "codex_status",
@@ -1195,8 +1200,9 @@ async function handleCodexStatus() {
 }
 //#endregion
 //#region src/services/config.service.ts
-const DEFAULT_CONFIG_DIR = process.env.OMNIAGENT_DIR || path.default.join(os.default.homedir(), ".omniagent");
-const CONFIG_FILE = process.env.OMNIAGENT_CONFIG || path.default.join(DEFAULT_CONFIG_DIR, "config.json");
+const DEFAULT_CONFIG_DIR = process.env.SYNAGENT_DIR || process.env.OMNIAGENT_DIR || path.default.join(os.default.homedir(), ".synagent");
+const LEGACY_CONFIG_FILE = path.default.join(os.default.homedir(), ".omniagent", "config.json");
+const CONFIG_FILE = process.env.SYNAGENT_CONFIG || process.env.OMNIAGENT_CONFIG || path.default.join(DEFAULT_CONFIG_DIR, "config.json");
 const VALID_BACKENDS = [
 	"codex",
 	"claude",
@@ -1256,7 +1262,8 @@ function validateConfig(config) {
 	};
 }
 function loadConfig() {
-	if (!fs.default.existsSync(CONFIG_FILE)) return {
+	const targetFile = fs.default.existsSync(CONFIG_FILE) ? CONFIG_FILE : !process.env.SYNAGENT_CONFIG && !process.env.OMNIAGENT_CONFIG && fs.default.existsSync(LEGACY_CONFIG_FILE) ? LEGACY_CONFIG_FILE : null;
+	if (!targetFile) return {
 		...DEFAULT_CONFIG,
 		routing: {
 			...DEFAULT_CONFIG.routing,
@@ -1265,9 +1272,9 @@ function loadConfig() {
 	};
 	let raw;
 	try {
-		raw = fs.default.readFileSync(CONFIG_FILE, "utf8");
+		raw = fs.default.readFileSync(targetFile, "utf8");
 	} catch (err) {
-		throw new Error(`Configuration Error: Failed to read '${CONFIG_FILE}': ${err.message}`);
+		throw new Error(`Configuration Error: Failed to read '${targetFile}': ${err.message}`);
 	}
 	let parsed;
 	try {
@@ -1300,8 +1307,8 @@ function setDefaultBackend(backend) {
 //#endregion
 //#region src/tools/config.tool.ts
 const setDefaultToolDefinition = {
-	name: "omniagent_set_default",
-	description: "Set and persist your preferred default CLI agent backend in ~/.omniagent/config.json.",
+	name: "synagent_set_default",
+	description: "Set and persist your preferred default CLI agent backend in ~/.synagent/config.json.",
 	inputSchema: {
 		type: "object",
 		properties: { backend: {
@@ -1315,6 +1322,11 @@ const setDefaultToolDefinition = {
 		} },
 		required: ["backend"]
 	}
+};
+const legacySetDefaultToolDefinition = {
+	...setDefaultToolDefinition,
+	name: "omniagent_set_default",
+	description: "Backward-compatible alias for synagent_set_default."
 };
 async function handleOmniagentSetDefault(args) {
 	setDefaultBackend(args.backend);
@@ -1509,7 +1521,7 @@ async function selectSmartQuotaBackend(candidates = null, options = {}) {
 //#endregion
 //#region src/tools/quota.tool.ts
 const quotaToolDefinition = {
-	name: "omniagent_quota_status",
+	name: "synagent_quota_status",
 	description: "Check current 5-hour rolling limit headroom, usage percentages, and reset timestamps across active CLI backends without consuming generation tokens.",
 	inputSchema: {
 		type: "object",
@@ -1518,6 +1530,11 @@ const quotaToolDefinition = {
 			description: "Force live refresh instead of reading cached telemetry."
 		} }
 	}
+};
+const legacyQuotaToolDefinition = {
+	...quotaToolDefinition,
+	name: "omniagent_quota_status",
+	description: "Backward-compatible alias for synagent_quota_status."
 };
 async function handleOmniagentQuotaStatus(args) {
 	const quotas = await inspectQuotas(args.refresh === true);
@@ -1529,7 +1546,7 @@ async function handleOmniagentQuotaStatus(args) {
 //#endregion
 //#region src/tools/issue.tool.ts
 const reportBugToolDefinition = {
-	name: "omniagent_report_bug",
+	name: "synagent_report_bug",
 	description: "Prepare a privacy-sanitized bug report and pre-filled GitHub issue URL to submit feedback or report issues to the maintainers.",
 	inputSchema: {
 		type: "object",
@@ -1545,6 +1562,11 @@ const reportBugToolDefinition = {
 		}
 	}
 };
+const legacyReportBugToolDefinition = {
+	...reportBugToolDefinition,
+	name: "omniagent_report_bug",
+	description: "Backward-compatible alias for synagent_report_bug."
+};
 async function handleOmniagentReportBug(args) {
 	const doctorReport = await runDoctor().catch(() => null);
 	return { content: [{
@@ -1559,12 +1581,17 @@ async function handleOmniagentReportBug(args) {
 //#endregion
 //#region src/services/session.service.ts
 function getSessionsDir() {
+	if (process.env.SYNAGENT_SESSIONS_DIR) return process.env.SYNAGENT_SESSIONS_DIR;
 	if (process.env.OMNIAGENT_SESSIONS_DIR) return process.env.OMNIAGENT_SESSIONS_DIR;
+	if (process.env.SYNAGENT_SESSIONS) {
+		const p = process.env.SYNAGENT_SESSIONS;
+		return p.endsWith(".json") ? path.default.join(path.default.dirname(p), "sessions") : p;
+	}
 	if (process.env.OMNIAGENT_SESSIONS) {
 		const p = process.env.OMNIAGENT_SESSIONS;
 		return p.endsWith(".json") ? path.default.join(path.default.dirname(p), "sessions") : p;
 	}
-	return path.default.join(os.default.homedir(), ".omniagent", "sessions");
+	return path.default.join(os.default.homedir(), ".synagent", "sessions");
 }
 function isProcessAlive(pid) {
 	if (!pid || typeof pid !== "number") return false;
@@ -1965,7 +1992,7 @@ function acquireAndResolveSession(sessionHandle, backendId = "codex", workspaceC
 //#endregion
 //#region src/tools/session.tool.ts
 const closeSessionToolDefinition = {
-	name: "omniagent_close_session",
+	name: "synagent_close_session",
 	description: "Close and clean up an active multi-turn conversation session.",
 	inputSchema: {
 		type: "object",
@@ -1975,6 +2002,11 @@ const closeSessionToolDefinition = {
 		} },
 		required: ["session_handle"]
 	}
+};
+const legacyCloseSessionToolDefinition = {
+	...closeSessionToolDefinition,
+	name: "omniagent_close_session",
+	description: "Backward-compatible alias for synagent_close_session."
 };
 async function handleOmniagentCloseSession(args) {
 	return { content: [{
@@ -2251,86 +2283,95 @@ function formatExecutionResult(backendId, res, defaultText = "No output received
 //#endregion
 //#region src/tools/review.tool.ts
 function getReviewToolDefinitions(codexConfig) {
-	return [{
-		name: "omniagent_review",
-		description: "Perform an automated code review on uncommitted changes, staged index, branches, or commits using local reasoning agents (Codex or Claude Code) in read-only sandbox mode.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				scope: {
-					type: "string",
-					description: "Target changes to review. Formats: \"uncommitted\" (default), \"staged\", commit SHA (\"a1b2c3d\"), revision (\"HEAD~1\"), base branch (\"main\"), or revision range (\"main...feature\")."
-				},
-				instructions: {
-					type: "string",
-					description: "Review focus guidelines, constraints, conventions, or security/performance checks."
-				},
-				backend: {
-					type: "string",
-					enum: [
-						"auto",
-						"codex",
-						"claude",
-						"smart_quota"
-					],
-					description: "CLI agent backend to execute the review (default: \"auto\", respecting configured default or smart_quota)."
-				},
-				workspace_path: {
-					type: "string",
-					description: "Optional absolute path to workspace root."
-				},
-				model: {
-					type: "string",
-					description: "Optional model override for the selected backend."
-				},
-				reasoning_effort: {
-					type: "string",
-					description: "Reasoning depth level (e.g. \"low\", \"medium\", \"high\", \"xhigh\", \"max\")."
-				},
-				user_confirmed: {
-					type: "boolean",
-					description: "Mandatory true confirmation if invoking top-tier models (e.g. \"astra\", \"claude-3-opus\")."
-				},
-				session_handle: {
-					type: "string",
-					description: "Optional persistent session handle from a previous turn to preserve full multi-turn context."
+	const baseReviewSchema = {
+		type: "object",
+		properties: {
+			scope: {
+				type: "string",
+				description: "Target changes to review. Formats: \"uncommitted\" (default), \"staged\", commit SHA (\"a1b2c3d\"), revision (\"HEAD~1\"), base branch (\"main\"), or revision range (\"main...feature\")."
+			},
+			instructions: {
+				type: "string",
+				description: "Review focus guidelines, constraints, conventions, or security/performance checks."
+			},
+			backend: {
+				type: "string",
+				enum: [
+					"auto",
+					"codex",
+					"claude",
+					"smart_quota"
+				],
+				description: "CLI agent backend to execute the review (default: \"auto\", respecting configured default or smart_quota)."
+			},
+			workspace_path: {
+				type: "string",
+				description: "Optional absolute path to workspace root."
+			},
+			model: {
+				type: "string",
+				description: "Optional model override for the selected backend."
+			},
+			reasoning_effort: {
+				type: "string",
+				description: "Reasoning depth level (e.g. \"low\", \"medium\", \"high\", \"xhigh\", \"max\")."
+			},
+			user_confirmed: {
+				type: "boolean",
+				description: "Mandatory true confirmation if invoking top-tier models (e.g. \"astra\", \"claude-3-opus\")."
+			},
+			session_handle: {
+				type: "string",
+				description: "Optional persistent session handle from a previous turn to preserve full multi-turn context."
+			}
+		}
+	};
+	return [
+		{
+			name: "synagent_review",
+			description: "Perform an automated code review on uncommitted changes, staged index, branches, or commits using local reasoning agents (Codex or Claude Code) in read-only sandbox mode.",
+			inputSchema: baseReviewSchema
+		},
+		{
+			name: "omniagent_review",
+			description: "Backward-compatible alias for synagent_review.",
+			inputSchema: baseReviewSchema
+		},
+		{
+			name: "codex_review_code",
+			description: "Run an automated code review on uncommitted changes, staged index, branches, or commits using OpenAI Codex in read-only mode.",
+			inputSchema: {
+				type: "object",
+				properties: {
+					scope: {
+						type: "string",
+						description: "Target changes to review. Formats: \"uncommitted\" (default), \"staged\", commit SHA (\"a1b2c3d\"), revision (\"HEAD~1\"), base branch (\"main\"), or revision range (\"main...feature\")."
+					},
+					instructions: {
+						type: "string",
+						description: "Review focus guidelines, constraints, conventions, or security/performance checks."
+					},
+					workspace_path: {
+						type: "string",
+						description: "Optional absolute path to workspace root."
+					},
+					model: {
+						type: "string",
+						description: `Model to use (default: "${codexConfig.defaultModel}", options: "gpt-6.1-sol", "gpt-6.0-sol", "luna", "astra").`
+					},
+					reasoning_effort: {
+						type: "string",
+						enum: VALID_REASONING_EFFORTS,
+						description: `Reasoning effort depth (default: "${codexConfig.defaultReasoningEffort}").`
+					},
+					user_confirmed: {
+						type: "boolean",
+						description: "Mandatory true confirmation if using the top-tier \"astra\" model."
+					}
 				}
 			}
 		}
-	}, {
-		name: "codex_review_code",
-		description: "Run an automated code review on uncommitted changes, staged index, branches, or commits using OpenAI Codex in read-only mode.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				scope: {
-					type: "string",
-					description: "Target changes to review. Formats: \"uncommitted\" (default), \"staged\", commit SHA (\"a1b2c3d\"), revision (\"HEAD~1\"), base branch (\"main\"), or revision range (\"main...feature\")."
-				},
-				instructions: {
-					type: "string",
-					description: "Review focus guidelines, constraints, conventions, or security/performance checks."
-				},
-				workspace_path: {
-					type: "string",
-					description: "Optional absolute path to workspace root."
-				},
-				model: {
-					type: "string",
-					description: `Model to use (default: "${codexConfig.defaultModel}", options: "gpt-6.1-sol", "gpt-6.0-sol", "luna", "astra").`
-				},
-				reasoning_effort: {
-					type: "string",
-					enum: VALID_REASONING_EFFORTS,
-					description: `Reasoning effort depth (default: "${codexConfig.defaultReasoningEffort}").`
-				},
-				user_confirmed: {
-					type: "boolean",
-					description: "Mandatory true confirmation if using the top-tier \"astra\" model."
-				}
-			}
-		}
-	}];
+	];
 }
 async function handleReview(toolName, args, workspaceCwd, abortSignal = null, onProgress = null) {
 	const backend = await resolveBackend(toolName === "codex_review_code" ? "codex" : args.backend || "auto");
@@ -2423,88 +2464,97 @@ ${scopeInfo.diff}`;
 //#endregion
 //#region src/tools/consult.tool.ts
 function getConsultToolDefinitions(codexConfig) {
-	return [{
-		name: "omniagent_consult",
-		description: "Consult local reasoning agents (Codex or Claude Code) for a second opinion on architecture plans, refactoring strategies, or technical trade-offs.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				proposal: {
-					type: "string",
-					description: "The proposed plan, architecture, or refactoring strategy to evaluate."
-				},
-				specific_questions: {
-					type: "string",
-					description: "Specific concerns, trade-offs, or questions to address."
-				},
-				backend: {
-					type: "string",
-					enum: [
-						"auto",
-						"codex",
-						"claude",
-						"smart_quota"
-					],
-					description: "CLI agent backend to consult (default: \"auto\")."
-				},
-				workspace_path: {
-					type: "string",
-					description: "Optional absolute path to workspace root."
-				},
-				model: {
-					type: "string",
-					description: "Optional model override."
-				},
-				reasoning_effort: {
-					type: "string",
-					description: "Reasoning depth level (default: \"medium\")."
-				},
-				user_confirmed: {
-					type: "boolean",
-					description: "Mandatory true confirmation if using top-tier models (\"astra\", \"claude-3-opus\")."
-				},
-				session_handle: {
-					type: "string",
-					description: "Optional persistent session handle from a previous turn to preserve full multi-turn context."
-				}
+	const baseConsultSchema = {
+		type: "object",
+		properties: {
+			proposal: {
+				type: "string",
+				description: "The proposed plan, architecture, or refactoring strategy to evaluate."
 			},
-			required: ["proposal"]
-		}
-	}, {
-		name: "codex_consult",
-		description: "Consult OpenAI Codex for a second opinion on an architecture plan, refactoring strategy, or technical trade-offs.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				proposal: {
-					type: "string",
-					description: "The proposed plan, architecture, or refactoring strategy to evaluate."
-				},
-				specific_questions: {
-					type: "string",
-					description: "Specific concerns, trade-offs, or questions to address."
-				},
-				workspace_path: {
-					type: "string",
-					description: "Optional absolute path to workspace root."
-				},
-				model: {
-					type: "string",
-					description: `Model to use (default: "${codexConfig.defaultModel}", options: "gpt-6.1-sol", "gpt-6.0-sol", "luna", "astra").`
-				},
-				reasoning_effort: {
-					type: "string",
-					enum: VALID_REASONING_EFFORTS,
-					description: "Reasoning effort depth (default: \"medium\")."
-				},
-				user_confirmed: {
-					type: "boolean",
-					description: "Mandatory true confirmation if using the top-tier \"astra\" model."
-				}
+			specific_questions: {
+				type: "string",
+				description: "Specific concerns, trade-offs, or questions to address."
 			},
-			required: ["proposal"]
+			backend: {
+				type: "string",
+				enum: [
+					"auto",
+					"codex",
+					"claude",
+					"smart_quota"
+				],
+				description: "CLI agent backend to consult (default: \"auto\")."
+			},
+			workspace_path: {
+				type: "string",
+				description: "Optional absolute path to workspace root."
+			},
+			model: {
+				type: "string",
+				description: "Optional model override."
+			},
+			reasoning_effort: {
+				type: "string",
+				description: "Reasoning depth level (default: \"medium\")."
+			},
+			user_confirmed: {
+				type: "boolean",
+				description: "Mandatory true confirmation if using top-tier models (\"astra\", \"claude-3-opus\")."
+			},
+			session_handle: {
+				type: "string",
+				description: "Optional persistent session handle from a previous turn to preserve full multi-turn context."
+			}
+		},
+		required: ["proposal"]
+	};
+	return [
+		{
+			name: "synagent_consult",
+			description: "Consult local reasoning agents (Codex or Claude Code) for a second opinion on architecture plans, refactoring strategies, or technical trade-offs.",
+			inputSchema: baseConsultSchema
+		},
+		{
+			name: "omniagent_consult",
+			description: "Backward-compatible alias for synagent_consult.",
+			inputSchema: baseConsultSchema
+		},
+		{
+			name: "codex_consult",
+			description: "Consult OpenAI Codex for a second opinion on an architecture plan, refactoring strategy, or technical trade-offs.",
+			inputSchema: {
+				type: "object",
+				properties: {
+					proposal: {
+						type: "string",
+						description: "The proposed plan, architecture, or refactoring strategy to evaluate."
+					},
+					specific_questions: {
+						type: "string",
+						description: "Specific concerns, trade-offs, or questions to address."
+					},
+					workspace_path: {
+						type: "string",
+						description: "Optional absolute path to workspace root."
+					},
+					model: {
+						type: "string",
+						description: `Model to use (default: "${codexConfig.defaultModel}", options: "gpt-6.1-sol", "gpt-6.0-sol", "luna", "astra").`
+					},
+					reasoning_effort: {
+						type: "string",
+						enum: VALID_REASONING_EFFORTS,
+						description: "Reasoning effort depth (default: \"medium\")."
+					},
+					user_confirmed: {
+						type: "boolean",
+						description: "Mandatory true confirmation if using the top-tier \"astra\" model."
+					}
+				},
+				required: ["proposal"]
+			}
 		}
-	}];
+	];
 }
 async function handleConsult(toolName, args, workspaceCwd, abortSignal = null, onProgress = null) {
 	if (typeof args.proposal !== "string" || !args.proposal.trim()) return {
@@ -2589,90 +2639,99 @@ ${args.specific_questions || "General review and risk assessment"}`;
 //#endregion
 //#region src/tools/analyze.tool.ts
 function getAnalyzeToolDefinitions(codexConfig) {
-	return [{
-		name: "omniagent_analyze",
-		description: "Perform deep architectural, dependency, and structural code analysis in read-only mode using local CLI reasoning agents.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				task: {
-					type: "string",
-					description: "The specific question, architectural aspect, or focus area to analyze."
-				},
-				file_paths: {
-					type: "array",
-					items: { type: "string" },
-					description: "Optional list of files or directories to inspect."
-				},
-				backend: {
-					type: "string",
-					enum: [
-						"auto",
-						"codex",
-						"claude",
-						"smart_quota"
-					],
-					description: "CLI agent backend to analyze with (default: \"auto\")."
-				},
-				workspace_path: {
-					type: "string",
-					description: "Optional absolute path to workspace root."
-				},
-				model: {
-					type: "string",
-					description: "Optional model override."
-				},
-				reasoning_effort: {
-					type: "string",
-					description: "Reasoning depth level (default: \"high\")."
-				},
-				user_confirmed: {
-					type: "boolean",
-					description: "Mandatory true confirmation if using top-tier models (\"astra\", \"claude-3-opus\")."
-				},
-				session_handle: {
-					type: "string",
-					description: "Optional persistent session handle from a previous turn to preserve full multi-turn context."
-				}
+	const baseAnalyzeSchema = {
+		type: "object",
+		properties: {
+			task: {
+				type: "string",
+				description: "The specific question, architectural aspect, or focus area to analyze."
 			},
-			required: ["task"]
-		}
-	}, {
-		name: "codex_analyze",
-		description: "Perform deep architectural, dependency, and structural code analysis in read-only sandbox mode using OpenAI Codex.",
-		inputSchema: {
-			type: "object",
-			properties: {
-				task: {
-					type: "string",
-					description: "The specific question, architectural aspect, or focus area to analyze."
-				},
-				file_paths: {
-					type: "array",
-					items: { type: "string" },
-					description: "Optional list of files or directories to inspect."
-				},
-				workspace_path: {
-					type: "string",
-					description: "Optional absolute path to workspace root."
-				},
-				model: {
-					type: "string",
-					description: `Model to use (default: "${codexConfig.defaultModel}", options: "gpt-6.1-sol", "gpt-6.0-sol", "luna", "astra").`
-				},
-				reasoning_effort: {
-					type: "string",
-					enum: VALID_REASONING_EFFORTS,
-					description: "Reasoning effort depth (default: \"high\")."
-				},
-				user_confirmed: {
-					type: "boolean",
-					description: "Mandatory true confirmation if using the top-tier \"astra\" model."
-				}
+			file_paths: {
+				type: "array",
+				items: { type: "string" },
+				description: "Optional list of files or directories to inspect."
 			},
-			required: ["task"]
+			backend: {
+				type: "string",
+				enum: [
+					"auto",
+					"codex",
+					"claude",
+					"smart_quota"
+				],
+				description: "CLI agent backend to analyze with (default: \"auto\")."
+			},
+			workspace_path: {
+				type: "string",
+				description: "Optional absolute path to workspace root."
+			},
+			model: {
+				type: "string",
+				description: "Optional model override."
+			},
+			reasoning_effort: {
+				type: "string",
+				description: "Reasoning depth level (default: \"high\")."
+			},
+			user_confirmed: {
+				type: "boolean",
+				description: "Mandatory true confirmation if using top-tier models (\"astra\", \"claude-3-opus\")."
+			},
+			session_handle: {
+				type: "string",
+				description: "Optional persistent session handle from a previous turn to preserve full multi-turn context."
+			}
+		},
+		required: ["task"]
+	};
+	return [
+		{
+			name: "synagent_analyze",
+			description: "Perform deep architectural, dependency, and structural code analysis in read-only mode using local CLI reasoning agents.",
+			inputSchema: baseAnalyzeSchema
+		},
+		{
+			name: "omniagent_analyze",
+			description: "Backward-compatible alias for synagent_analyze.",
+			inputSchema: baseAnalyzeSchema
+		},
+		{
+			name: "codex_analyze",
+			description: "Perform deep architectural, dependency, and structural code analysis in read-only sandbox mode using OpenAI Codex.",
+			inputSchema: {
+				type: "object",
+				properties: {
+					task: {
+						type: "string",
+						description: "The specific question, architectural aspect, or focus area to analyze."
+					},
+					file_paths: {
+						type: "array",
+						items: { type: "string" },
+						description: "Optional list of files or directories to inspect."
+					},
+					workspace_path: {
+						type: "string",
+						description: "Optional absolute path to workspace root."
+					},
+					model: {
+						type: "string",
+						description: `Model to use (default: "${codexConfig.defaultModel}", options: "gpt-6.1-sol", "gpt-6.0-sol", "luna", "astra").`
+					},
+					reasoning_effort: {
+						type: "string",
+						enum: VALID_REASONING_EFFORTS,
+						description: "Reasoning effort depth (default: \"high\")."
+					},
+					user_confirmed: {
+						type: "boolean",
+						description: "Mandatory true confirmation if using the top-tier \"astra\" model."
+					}
+				},
+				required: ["task"]
+			}
 		}
-	}];
+	];
 }
 async function handleAnalyze(toolName, args, workspaceCwd, abortSignal = null, onProgress = null) {
 	if (typeof args.task !== "string" || !args.task.trim()) return {
@@ -2931,8 +2990,8 @@ function validateToolArguments(args) {
 }
 function createServer() {
 	const server = new _modelcontextprotocol_sdk_server_index_js.Server({
-		name: "omniagent",
-		version: "1.0.0-rc.1"
+		name: "synagent",
+		version: "0.9.0-dev"
 	}, { capabilities: { tools: {} } });
 	server.setRequestHandler(_modelcontextprotocol_sdk_types_js.ListToolsRequestSchema, async () => {
 		const codexConfig = readCodexConfig();
@@ -2945,12 +3004,20 @@ function createServer() {
 			...getReviewToolDefinitions(codexConfig).slice(0, 1),
 			...getConsultToolDefinitions(codexConfig).slice(0, 1),
 			...getAnalyzeToolDefinitions(codexConfig).slice(0, 1),
+			legacyDoctorToolDefinition,
+			legacySetDefaultToolDefinition,
+			legacyQuotaToolDefinition,
+			legacyReportBugToolDefinition,
+			legacyCloseSessionToolDefinition,
+			...getReviewToolDefinitions(codexConfig).slice(1, 2),
+			...getConsultToolDefinitions(codexConfig).slice(1, 2),
+			...getAnalyzeToolDefinitions(codexConfig).slice(1, 2),
 			codexStatusToolDefinition,
 			getDebugToolDefinition(codexConfig),
-			...getAnalyzeToolDefinitions(codexConfig).slice(1),
-			...getReviewToolDefinitions(codexConfig).slice(1),
+			...getAnalyzeToolDefinitions(codexConfig).slice(2),
+			...getReviewToolDefinitions(codexConfig).slice(2),
 			getImplementToolDefinition(codexConfig),
-			...getConsultToolDefinitions(codexConfig).slice(1)
+			...getConsultToolDefinitions(codexConfig).slice(2)
 		] };
 	});
 	server.setRequestHandler(_modelcontextprotocol_sdk_types_js.CallToolRequestSchema, async (request, extra) => {
@@ -2962,16 +3029,16 @@ function createServer() {
 		const progressToken = request.params._meta?.progressToken;
 		const onProgress = createProgressReporter(server, progressToken);
 		try {
-			if (name === "omniagent_doctor") return await handleOmniagentDoctor();
-			if (name === "omniagent_set_default") return await handleOmniagentSetDefault(args);
-			if (name === "omniagent_quota_status") return await handleOmniagentQuotaStatus(args);
-			if (name === "omniagent_report_bug") return await handleOmniagentReportBug(args);
-			if (name === "omniagent_close_session") return await handleOmniagentCloseSession(args);
+			if (name === "synagent_doctor" || name === "omniagent_doctor") return await handleOmniagentDoctor();
+			if (name === "synagent_set_default" || name === "omniagent_set_default") return await handleOmniagentSetDefault(args);
+			if (name === "synagent_quota_status" || name === "omniagent_quota_status") return await handleOmniagentQuotaStatus(args);
+			if (name === "synagent_report_bug" || name === "omniagent_report_bug") return await handleOmniagentReportBug(args);
+			if (name === "synagent_close_session" || name === "omniagent_close_session") return await handleOmniagentCloseSession(args);
 			if (name === "codex_status") return await handleCodexStatus();
 			const workspaceCwd = resolveWorkspacePath(args.workspace_path);
-			if (name === "omniagent_review" || name === "codex_review_code") return await handleReview(name, args, workspaceCwd, abortSignal, onProgress);
-			if (name === "omniagent_consult" || name === "codex_consult") return await handleConsult(name, args, workspaceCwd, abortSignal, onProgress);
-			if (name === "omniagent_analyze" || name === "codex_analyze") return await handleAnalyze(name, args, workspaceCwd, abortSignal, onProgress);
+			if (name === "synagent_review" || name === "omniagent_review" || name === "codex_review_code") return await handleReview(name, args, workspaceCwd, abortSignal, onProgress);
+			if (name === "synagent_consult" || name === "omniagent_consult" || name === "codex_consult") return await handleConsult(name, args, workspaceCwd, abortSignal, onProgress);
+			if (name === "synagent_analyze" || name === "omniagent_analyze" || name === "codex_analyze") return await handleAnalyze(name, args, workspaceCwd, abortSignal, onProgress);
 			if (name === "codex_debug_error") return await handleDebugError(args, workspaceCwd, abortSignal, onProgress);
 			if (name === "codex_implement") return await handleImplement(args, workspaceCwd, abortSignal, onProgress);
 			throw new Error(`Unknown tool: ${name}`);
@@ -3001,7 +3068,7 @@ async function run() {
 	const server = createServer();
 	const transport = new _modelcontextprotocol_sdk_server_stdio_js.StdioServerTransport();
 	await server.connect(transport);
-	process.stderr.write("OmniAgent MCP Server v1.0.0 running on stdio\n");
+	process.stderr.write("SynAgent MCP Server (Cross-Agent CLI Bridge) running on stdio\n");
 }
 run().catch((error) => {
 	process.stderr.write(`Fatal error in main(): ${error?.stack || error}\n`);

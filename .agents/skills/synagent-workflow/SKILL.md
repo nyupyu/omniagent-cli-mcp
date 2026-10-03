@@ -1,11 +1,11 @@
 ---
-name: omniagent-workflow
-description: Standard operating procedures for building, testing, auditing, and releasing OmniAgent MCP server.
+name: synagent-workflow
+description: Standard operating procedures for building, testing, auditing, and releasing SynAgent MCP server.
 ---
 
-# OmniAgent MCP Workflow Guide
+# SynAgent MCP Workflow Guide
 
-Use this skill when developing, testing, or releasing OmniAgent.
+Use this skill when developing, testing, or releasing SynAgent.
 
 ## Local Quality Gate
 Always run before committing:

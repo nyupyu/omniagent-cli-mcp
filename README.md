@@ -1,16 +1,16 @@
-# OmniAgent - CLI Agent Bridge
+# SynAgent MCP - Cross-Agent CLI Bridge
 
 <p align="center">
   <a href="https://oki.dev">
-    <img src="https://raw.githubusercontent.com/nyupyu/omniagent/main/assets/logo.png" width="128" height="128" alt="OmniAgent Logo" />
+    <img src="https://raw.githubusercontent.com/nyupyu/synagent/main/assets/logo.png" width="128" height="128" alt="SynAgent Logo" />
   </a>
 </p>
 
 <p align="center">
   <a href="https://oki.dev"><img src="https://img.shields.io/badge/Website-oki.dev-007acc?style=flat-square&logo=googlechrome&logoColor=white" alt="Website" /></a>
-  <a href="https://www.npmjs.com/package/omniagent-mcp"><img src="https://img.shields.io/badge/npm-omniagent--mcp-cb3837?style=flat-square&logo=npm&logoColor=white" alt="npm package" /></a>
-  <a href="https://github.com/nyupyu/omniagent/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-Passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white" alt="CI Status" /></a>
-  <a href="https://github.com/nyupyu/omniagent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-44cc11?style=flat-square" alt="License" /></a>
+  <a href="https://www.npmjs.com/package/synagent-mcp"><img src="https://img.shields.io/badge/npm-synagent--mcp-cb3837?style=flat-square&logo=npm&logoColor=white" alt="npm package" /></a>
+  <a href="https://github.com/nyupyu/synagent/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-Passing-2ea44f?style=flat-square&logo=githubactions&logoColor=white" alt="CI Status" /></a>
+  <a href="https://github.com/nyupyu/synagent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-44cc11?style=flat-square" alt="License" /></a>
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-Compatible-blueviolet?style=flat-square&logo=visualstudiocode&logoColor=white" alt="MCP Compatible" /></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D20.0.0-informational?style=flat-square&logo=node.js&logoColor=white" alt="Node" /></a>
 </p>
@@ -22,7 +22,7 @@
   <img src="https://img.shields.io/badge/Sandbox-Read--Only%20Guard-2ea44f?style=flat-square" alt="Sandbox Guard" />
 </p>
 
-An intelligent multi-agent orchestration bridge connecting IDEs (**VS Code**, **Cursor**, **Antigravity**) with local coding agent CLIs (**OpenAI Codex CLI**, **Claude Code**, and **Gemini CLI**) via the Model Context Protocol (MCP).
+An intelligent cross-agent orchestration bridge connecting IDEs (**VS Code**, **Cursor**, **Antigravity**) with local coding agent CLIs (**OpenAI Codex CLI**, **Claude Code**, and **Gemini CLI**) via the Model Context Protocol (MCP).
 
 ---
 
@@ -117,7 +117,7 @@ To prevent accidental consumption of high-tier resources, top-tier models (`astr
 
 ### 1. Install via npm
 ```bash
-npm install -g omniagent-mcp
+npm install -g synagent-mcp
 ```
 
 ### 2. Configure in your IDE
@@ -126,11 +126,9 @@ npm install -g omniagent-mcp
 ```json
 {
   "servers": {
-    "io.github.oki-dev/omniagent": {
+    "io.github.oki-dev/synagent": {
       "type": "stdio",
-      "command": "omniagent",
-      "gallery": "https://api.mcp.github.com",
-      "version": "1.0.0"
+      "command": "synagent"
     }
   }
 }
@@ -140,8 +138,8 @@ npm install -g omniagent-mcp
 ```json
 {
   "mcpServers": {
-    "omniagent": {
-      "command": "omniagent"
+    "synagent": {
+      "command": "synagent"
     }
   }
 }

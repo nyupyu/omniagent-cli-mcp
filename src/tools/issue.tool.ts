@@ -2,7 +2,7 @@ import { generateBugReport } from '../services/issue.service.js';
 import { runDoctor } from '../services/doctor.service.js';
 
 export const reportBugToolDefinition = {
-  name: 'omniagent_report_bug',
+  name: 'synagent_report_bug',
   description:
     'Prepare a privacy-sanitized bug report and pre-filled GitHub issue URL to submit feedback or report issues to the maintainers.',
   inputSchema: {
@@ -18,6 +18,12 @@ export const reportBugToolDefinition = {
       },
     },
   },
+};
+
+export const legacyReportBugToolDefinition = {
+  ...reportBugToolDefinition,
+  name: 'omniagent_report_bug',
+  description: 'Backward-compatible alias for synagent_report_bug.',
 };
 
 export async function handleOmniagentReportBug(args: any) {
