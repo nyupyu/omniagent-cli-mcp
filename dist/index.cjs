@@ -116,7 +116,7 @@ function resolveWorkspacePath(rawPath) {
 	}
 	return process.cwd();
 }
-const GITHUB_NEW_ISSUE_BASE = `https://github.com/nyupyu/omniagent-cli-mcp/issues/new`;
+const GITHUB_NEW_ISSUE_BASE = `https://github.com/nyupyu/omniagent/issues/new`;
 const MAX_RAW_INPUT_LENGTH = 4096;
 function safeSlice(str, maxLength = 80) {
 	if (!str || typeof str !== "string") return "";
@@ -1984,6 +1984,14 @@ async function handleOmniagentCloseSession(args) {
 }
 //#endregion
 //#region src/services/router.service.ts
+/**
+* Resolves the appropriate CLI adapter based on caller request, user configuration,
+* installation state, and quota availability.
+*
+* @param requestedBackend - Optional target ('auto', 'codex', 'claude', 'smart_quota')
+* @returns Resolved backend structure with adapter and probe
+* @throws Error if requested backend is invalid, uninstalled, or forbidden by policy
+*/
 async function resolveBackend(requestedBackend) {
 	const config = loadConfig();
 	const allowed = new Set(config.routing?.allowedBackends || ["codex", "claude"]);

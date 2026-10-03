@@ -129,12 +129,12 @@ Spawning a brand new CLI process on every MCP request causes the agent to lose c
 ## 6. Zero-Friction Bug & Issue Reporting (v1.1.0 Roadmap)
 
 ### Problem Definition:
-Users encounter errors or environment quirks and want to report bugs directly to GitHub (`nyupyu/omniagent-cli-mcp`), but the MCP server cannot authenticate to GitHub on behalf of the user without credentials.
+Users encounter errors or environment quirks and want to report bugs directly to GitHub (`nyupyu/omniagent`), but the MCP server cannot authenticate to GitHub on behalf of the user without credentials.
 
 ### Dual-Channel Architecture:
 1. **Channel A: Pre-Filled Issue URL (Zero-Auth / 1-Click Browser Workflow — Default):**
    - Constructs a standardized, pre-filled URL:
-     `https://github.com/nyupyu/omniagent-cli-mcp/issues/new?title=...&body=...`
+     `https://github.com/nyupyu/omniagent/issues/new?title=...&body=...`
    - Formats a comprehensive, sanitized markdown bug report:
      - OmniAgent version, Node.js version, OS platform & architecture.
      - Installed CLI versions & diagnostic summary from `omniagent_doctor`.
@@ -144,7 +144,7 @@ Users encounter errors or environment quirks and want to report bugs directly to
 2. **Channel B: GitHub CLI Integration (`gh issue create` — Opt-In):**
    - Asynchronously probes `gh auth status`.
    - If authenticated, prompts the user: *"Would you like OmniAgent to submit this issue directly via GitHub CLI (`gh issue create`)?"*
-   - Upon explicit consent, executes `gh issue create --repo nyupyu/omniagent-cli-mcp --title ... --body-file -` via stdin without opening external shells.
+   - Upon explicit consent, executes `gh issue create --repo nyupyu/omniagent --title ... --body-file -` via stdin without opening external shells.
 
 ---
 
@@ -181,7 +181,7 @@ To ensure long-term maintainability, eliminate monolithic handler files, and est
 
 ### 7.4 Refactored Modular Structure:
 ```text
-omniagent-cli-mcp/
+omniagent/
 ├── tsconfig.json                 # Strict TypeScript configuration (target: ES2022, moduleResolution: NodeNext)
 ├── tsdown.config.ts              # Modern Rust-powered bundler config (format: cjs, target: node22, bundle: true)
 ├── package.json                  # scripts: build, dev, test, typecheck; bin: dist/index.cjs
