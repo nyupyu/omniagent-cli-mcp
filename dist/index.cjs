@@ -2386,17 +2386,17 @@ function getReviewToolDefinitions(codexConfig) {
 	};
 	return [
 		{
-			name: "synagent_review",
+			name: TOOL_NAMES.REVIEW,
 			description: "Perform an automated code review on uncommitted changes, staged index, branches, or commits using local reasoning agents (Codex or Claude Code) in read-only sandbox mode.",
 			inputSchema: baseReviewSchema
 		},
 		{
-			name: "omniagent_review",
-			description: "Backward-compatible alias for synagent_review.",
+			name: TOOL_NAMES.LEGACY_REVIEW,
+			description: getLegacyAliasDescription(TOOL_NAMES.REVIEW),
 			inputSchema: baseReviewSchema
 		},
 		{
-			name: "codex_review_code",
+			name: TOOL_NAMES.CODEX_REVIEW,
 			description: "Run an automated code review on uncommitted changes, staged index, branches, or commits using OpenAI Codex in read-only mode.",
 			inputSchema: {
 				type: "object",
@@ -2432,7 +2432,7 @@ function getReviewToolDefinitions(codexConfig) {
 	];
 }
 async function handleReview(toolName, args, workspaceCwd, abortSignal = null, onProgress = null) {
-	const backend = await resolveBackend(toolName === "codex_review_code" ? "codex" : args.backend || "auto");
+	const backend = await resolveBackend(toolName === TOOL_NAMES.CODEX_REVIEW ? "codex" : args.backend || "auto");
 	const codexConfig = readCodexConfig();
 	const requestedModel = typeof args.model === "string" && args.model.trim() ? args.model.trim() : backend.id === "codex" ? codexConfig.defaultModel : "claude-3-7-sonnet";
 	const approval = checkModelGovernance(requestedModel, args.user_confirmed);
@@ -2472,7 +2472,7 @@ ${scopeInfo.diff}`, {
 		"-c",
 		`model_reasoning_effort=${normalizeReasoningEffort(args.reasoning_effort, codexConfig.defaultReasoningEffort)}`
 	];
-	if (toolName === "omniagent_review" || args.session_handle || hasInstructions || !scopeInfo.nativeArgs) {
+	if (toolName === TOOL_NAMES.REVIEW || toolName === TOOL_NAMES.LEGACY_REVIEW || args.session_handle || hasInstructions || !scopeInfo.nativeArgs) {
 		const sessionRes = acquireAndResolveSession(args.session_handle, backend.id, workspaceCwd);
 		if (sessionRes.error) return {
 			isError: true,

@@ -5,6 +5,7 @@ import { acquireAndResolveSession, releaseSessionTurn, updateSession } from '../
 import * as codexAdapter from '../adapters/codex.adapter.js';
 import * as claudeAdapter from '../adapters/claude.adapter.js';
 import { formatExecutionResult } from './common.js';
+import { TOOL_NAMES, getLegacyAliasDescription } from '../constants/index.js';
 
 export function getReviewToolDefinitions(codexConfig: any) {
   const baseReviewSchema = {
@@ -49,18 +50,18 @@ export function getReviewToolDefinitions(codexConfig: any) {
 
   return [
     {
-      name: 'synagent_review',
+      name: TOOL_NAMES.REVIEW,
       description:
         'Perform an automated code review on uncommitted changes, staged index, branches, or commits using local reasoning agents (Codex or Claude Code) in read-only sandbox mode.',
       inputSchema: baseReviewSchema,
     },
     {
-      name: 'omniagent_review',
-      description: 'Backward-compatible alias for synagent_review.',
+      name: TOOL_NAMES.LEGACY_REVIEW,
+      description: getLegacyAliasDescription(TOOL_NAMES.REVIEW),
       inputSchema: baseReviewSchema,
     },
     {
-      name: 'codex_review_code',
+      name: TOOL_NAMES.CODEX_REVIEW,
       description:
         'Run an automated code review on uncommitted changes, staged index, branches, or commits using OpenAI Codex in read-only mode.',
       inputSchema: {
@@ -105,7 +106,7 @@ export async function handleReview(
   abortSignal: AbortSignal | null = null,
   onProgress: any = null
 ) {
-  const backendId = toolName === 'codex_review_code' ? 'codex' : (args.backend || 'auto');
+  const backendId = toolName === TOOL_NAMES.CODEX_REVIEW ? 'codex' : (args.backend || 'auto');
   const backend = await resolveBackend(backendId);
 
   const codexConfig = codexAdapter.readCodexConfig();
@@ -157,7 +158,13 @@ ${scopeInfo.diff}`;
   const effort = codexAdapter.normalizeReasoningEffort(args.reasoning_effort, codexConfig.defaultReasoningEffort);
   const cliModelArgs = ['-m', requestedModel, '-c', `model_reasoning_effort=${effort}`];
 
-  if (toolName === 'omniagent_review' || args.session_handle || hasInstructions || !scopeInfo.nativeArgs) {
+  if (
+    toolName === TOOL_NAMES.REVIEW ||
+    toolName === TOOL_NAMES.LEGACY_REVIEW ||
+    args.session_handle ||
+    hasInstructions ||
+    !scopeInfo.nativeArgs
+  ) {
     const sessionRes = acquireAndResolveSession(args.session_handle, backend.id, workspaceCwd);
     if (sessionRes.error) {
       return {

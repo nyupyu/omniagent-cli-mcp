@@ -28,7 +28,7 @@ An intelligent cross-agent orchestration bridge connecting IDEs (**VS Code**, **
 
 ## ⚡ Prerequisites & Agent Status
 
-OmniAgent bridges your IDE with your local CLI agents. **You need at least one supported CLI installed and authenticated** on your machine:
+SynAgent bridges your IDE with your local CLI agents. **You need at least one supported CLI installed and authenticated** on your machine:
 
 | Provider | Status in v1.0 | Model Families | Installation | Interactive Sign-In |
 | :--- | :--- | :--- | :--- | :--- |
@@ -37,11 +37,11 @@ OmniAgent bridges your IDE with your local CLI agents. **You need at least one s
 | **Gemini CLI** | **Probed Backend** | Flash, Pro | `npm install -g @google/gemini-cli` | `gemini` (follow prompts) |
 
 > [!NOTE]
-> Run the **`omniagent_doctor`** tool anytime to check your machine's environment, active versions, and authentication readiness.
+> Run the **`synagent_doctor`** tool anytime to check your machine's environment, active versions, and authentication readiness.
 
 > [!IMPORTANT]
 > **Strict User Consent & Privacy Policy**:
-> - **Zero Silent Downloads**: OmniAgent **never** downloads, installs, or executes packages in the background. If a CLI is missing, `omniagent_doctor` provides the exact terminal command.
+> - **Zero Silent Downloads**: SynAgent **never** downloads, installs, or executes packages in the background. If a CLI is missing, `synagent_doctor` provides the exact terminal command.
 > - **Read-Only Sandbox Guard**: All diagnostic, review, analysis, and consultation tasks run in enforced **`read-only`** mode (`--sandbox read-only` on Codex, `--permission-mode dontAsk --tools Read,Glob,Grep` on Claude) to protect your repository from unintended edits.
 
 ---
@@ -155,7 +155,7 @@ npx synagent
 
 ## Automated Test Suite
 
-OmniAgent includes a test suite using the native Node.js test runner:
+SynAgent includes a test suite using the native Node.js test runner:
 
 ```bash
 npm test

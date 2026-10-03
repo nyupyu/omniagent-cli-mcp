@@ -25,6 +25,7 @@
     "index.js",
     "src/",
     "assets/",
+    "plugin.json",
     "README.md",
     "LICENSE"
   ],
