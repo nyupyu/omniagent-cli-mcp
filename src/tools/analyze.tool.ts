@@ -4,6 +4,7 @@ import { acquireAndResolveSession, releaseSessionTurn, updateSession } from '../
 import * as codexAdapter from '../adapters/codex.adapter.js';
 import * as claudeAdapter from '../adapters/claude.adapter.js';
 import { formatExecutionResult } from './common.js';
+import { TOOL_NAMES, getLegacyAliasDescription } from '../constants/index.js';
 
 export function getAnalyzeToolDefinitions(codexConfig: any) {
   const baseAnalyzeSchema = {
@@ -49,18 +50,18 @@ export function getAnalyzeToolDefinitions(codexConfig: any) {
 
   return [
     {
-      name: 'synagent_analyze',
+      name: TOOL_NAMES.ANALYZE,
       description:
         'Perform deep architectural, dependency, and structural code analysis in read-only mode using local CLI reasoning agents.',
       inputSchema: baseAnalyzeSchema,
     },
     {
-      name: 'omniagent_analyze',
-      description: 'Backward-compatible alias for synagent_analyze.',
+      name: TOOL_NAMES.LEGACY_ANALYZE,
+      description: getLegacyAliasDescription(TOOL_NAMES.ANALYZE),
       inputSchema: baseAnalyzeSchema,
     },
     {
-      name: 'codex_analyze',
+      name: TOOL_NAMES.CODEX_ANALYZE,
       description:
         'Perform deep architectural, dependency, and structural code analysis in read-only sandbox mode using OpenAI Codex.',
       inputSchema: {
@@ -113,7 +114,7 @@ export async function handleAnalyze(
     };
   }
 
-  const backendId = toolName === 'codex_analyze' ? 'codex' : (args.backend || 'auto');
+  const backendId = toolName === TOOL_NAMES.CODEX_ANALYZE ? 'codex' : (args.backend || 'auto');
   const backend = await resolveBackend(backendId);
 
   const codexConfig = codexAdapter.readCodexConfig();

@@ -1,8 +1,9 @@
 import { generateBugReport } from '../services/issue.service.js';
 import { runDoctor } from '../services/doctor.service.js';
+import { TOOL_NAMES, getLegacyAliasDescription } from '../constants/index.js';
 
 export const reportBugToolDefinition = {
-  name: 'synagent_report_bug',
+  name: TOOL_NAMES.REPORT_BUG,
   description:
     'Prepare a privacy-sanitized bug report and pre-filled GitHub issue URL to submit feedback or report issues to the maintainers.',
   inputSchema: {
@@ -22,11 +23,11 @@ export const reportBugToolDefinition = {
 
 export const legacyReportBugToolDefinition = {
   ...reportBugToolDefinition,
-  name: 'omniagent_report_bug',
-  description: 'Backward-compatible alias for synagent_report_bug.',
+  name: TOOL_NAMES.LEGACY_REPORT_BUG,
+  description: getLegacyAliasDescription(TOOL_NAMES.REPORT_BUG),
 };
 
-export async function handleOmniagentReportBug(args: any) {
+export async function handleReportBug(args: any) {
   const doctorReport = await runDoctor().catch(() => null);
   const report = generateBugReport({
     errorMessage: args.error_message,
@@ -42,3 +43,5 @@ export async function handleOmniagentReportBug(args: any) {
     ],
   };
 }
+
+export const handleOmniagentReportBug = handleReportBug;

@@ -1,9 +1,10 @@
 import { setDefaultBackend, CONFIG_FILE } from '../services/config.service.js';
+import { TOOL_NAMES, CONFIG_CONSTANTS, getLegacyAliasDescription } from '../constants/index.js';
 
 export const setDefaultToolDefinition = {
-  name: 'synagent_set_default',
+  name: TOOL_NAMES.SET_DEFAULT,
   description:
-    'Set and persist your preferred default CLI agent backend in ~/.synagent/config.json.',
+    `Set and persist your preferred default CLI agent backend in ~/${CONFIG_CONSTANTS.DIR_NAME}/${CONFIG_CONSTANTS.FILE_NAME}.`,
   inputSchema: {
     type: 'object',
     properties: {
@@ -19,11 +20,11 @@ export const setDefaultToolDefinition = {
 
 export const legacySetDefaultToolDefinition = {
   ...setDefaultToolDefinition,
-  name: 'omniagent_set_default',
-  description: 'Backward-compatible alias for synagent_set_default.',
+  name: TOOL_NAMES.LEGACY_SET_DEFAULT,
+  description: getLegacyAliasDescription(TOOL_NAMES.SET_DEFAULT),
 };
 
-export async function handleOmniagentSetDefault(args: any) {
+export async function handleSetDefault(args: any) {
   setDefaultBackend(args.backend);
   return {
     content: [
@@ -34,3 +35,5 @@ export async function handleOmniagentSetDefault(args: any) {
     ],
   };
 }
+
+export const handleOmniagentSetDefault = handleSetDefault;

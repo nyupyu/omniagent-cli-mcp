@@ -116,7 +116,69 @@ function resolveWorkspacePath(rawPath) {
 	}
 	return process.cwd();
 }
-const GITHUB_NEW_ISSUE_BASE = `https://github.com/nyupyu/synagent/issues/new`;
+//#endregion
+//#region src/constants/index.ts
+/**
+* @fileoverview Central branding, naming, and tool constants for SynAgent MCP Server.
+* Prevents magic strings across tool definitions, dispatchers, handlers, and configuration.
+*/
+const BRAND = {
+	NAME: "SynAgent",
+	TAGLINE: "Cross-Agent CLI Bridge",
+	PACKAGE_NAME: "synagent",
+	SERVER_NAME: "synagent",
+	SERVER_VERSION: "0.9.0-dev",
+	GITHUB_OWNER: "nyupyu",
+	GITHUB_REPO: "synagent"
+};
+const CONFIG_CONSTANTS = {
+	DIR_NAME: ".synagent",
+	LEGACY_DIR_NAME: ".omniagent",
+	FILE_NAME: "config.json",
+	ENV_DIR: "SYNAGENT_DIR",
+	LEGACY_ENV_DIR: "OMNIAGENT_DIR",
+	ENV_CONFIG: "SYNAGENT_CONFIG",
+	LEGACY_ENV_CONFIG: "OMNIAGENT_CONFIG",
+	ENV_SESSIONS_DIR: "SYNAGENT_SESSIONS_DIR",
+	LEGACY_ENV_SESSIONS_DIR: "OMNIAGENT_SESSIONS_DIR"
+};
+/**
+* Enumeration of all registered tool names across SynAgent, legacy OmniAgent aliases, and direct Codex CLI tools.
+*/
+const TOOL_NAMES = {
+	DOCTOR: "synagent_doctor",
+	SET_DEFAULT: "synagent_set_default",
+	QUOTA_STATUS: "synagent_quota_status",
+	REPORT_BUG: "synagent_report_bug",
+	CLOSE_SESSION: "synagent_close_session",
+	REVIEW: "synagent_review",
+	CONSULT: "synagent_consult",
+	ANALYZE: "synagent_analyze",
+	LEGACY_DOCTOR: "omniagent_doctor",
+	LEGACY_SET_DEFAULT: "omniagent_set_default",
+	LEGACY_QUOTA_STATUS: "omniagent_quota_status",
+	LEGACY_REPORT_BUG: "omniagent_report_bug",
+	LEGACY_CLOSE_SESSION: "omniagent_close_session",
+	LEGACY_REVIEW: "omniagent_review",
+	LEGACY_CONSULT: "omniagent_consult",
+	LEGACY_ANALYZE: "omniagent_analyze",
+	CODEX_STATUS: "codex_status",
+	CODEX_DEBUG: "codex_debug_error",
+	CODEX_ANALYZE: "codex_analyze",
+	CODEX_REVIEW: "codex_review_code",
+	CODEX_IMPLEMENT: "codex_implement",
+	CODEX_CONSULT: "codex_consult"
+};
+/**
+* Returns a standardized description for backward-compatible alias tools.
+*
+* @param primaryToolName The name of the primary replacement tool.
+* @returns Human-readable description referencing the primary tool.
+*/
+function getLegacyAliasDescription(primaryToolName) {
+	return `Backward-compatible alias for ${primaryToolName}.`;
+}
+const GITHUB_NEW_ISSUE_BASE = `https://github.com/${BRAND.GITHUB_OWNER}/${BRAND.GITHUB_REPO}/issues/new`;
 const MAX_RAW_INPUT_LENGTH = 4096;
 function safeSlice(str, maxLength = 80) {
 	if (!str || typeof str !== "string") return "";
@@ -208,7 +270,7 @@ ${safeSlice(cleanError, 800)}
 \`\`\`
 
 ### Environment Details
-- **OmniAgent MCP Version**: 1.0.0
+- **${BRAND.NAME} MCP Version**: ${BRAND.SERVER_VERSION}
 - **Node.js**: ${process.version}
 - **OS**: ${os.default.type()} ${os.default.release()} (${os.default.arch()})
 - **Detected CLIs**:
@@ -227,11 +289,7 @@ ${doctorSummary}
 			title,
 			body,
 			issueUrl,
-			prompt: `Would you like to report this issue to GitHub to help improve OmniAgent?
-
-Click the link below to review and submit the pre-filled issue in your browser (no tokens or extra login needed):
-
-**[Submit Bug Report on GitHub](${issueUrl})**\n\n<details><summary>Preview Sanitized Report</summary>\n\n${body}\n</details>`
+			prompt: `Would you like to report this issue to GitHub to help improve ${BRAND.NAME}?\n\nClick the link below to review and submit the pre-filled issue in your browser (no tokens or extra login needed):\n\n**[Submit Bug Report on GitHub](${issueUrl})**\n\n<details><summary>Preview Sanitized Report</summary>\n\n${body}\n</details>`
 		};
 	} catch (_err) {
 		return {
@@ -1150,7 +1208,7 @@ async function runDoctor() {
 //#endregion
 //#region src/tools/doctor.tool.ts
 const doctorToolDefinition = {
-	name: "synagent_doctor",
+	name: TOOL_NAMES.DOCTOR,
 	description: "Comprehensive cross-agent diagnostic tool. Audits installations, paths, versions, and auth status of OpenAI Codex CLI, Claude Code CLI, and Gemini CLI without running silent background downloads.",
 	inputSchema: {
 		type: "object",
@@ -1159,18 +1217,18 @@ const doctorToolDefinition = {
 };
 const legacyDoctorToolDefinition = {
 	...doctorToolDefinition,
-	name: "omniagent_doctor",
-	description: "Backward-compatible alias for synagent_doctor."
+	name: TOOL_NAMES.LEGACY_DOCTOR,
+	description: getLegacyAliasDescription(TOOL_NAMES.DOCTOR)
 };
 const codexStatusToolDefinition = {
-	name: "codex_status",
+	name: TOOL_NAMES.CODEX_STATUS,
 	description: "Diagnostic check: returns the OpenAI Codex CLI installation status, configuration, available models, reasoning efforts, and active policies.",
 	inputSchema: {
 		type: "object",
 		properties: {}
 	}
 };
-async function handleOmniagentDoctor() {
+async function handleDoctor() {
 	const report = await runDoctor();
 	return { content: [{
 		type: "text",
@@ -1200,9 +1258,9 @@ async function handleCodexStatus() {
 }
 //#endregion
 //#region src/services/config.service.ts
-const DEFAULT_CONFIG_DIR = process.env.SYNAGENT_DIR || process.env.OMNIAGENT_DIR || path.default.join(os.default.homedir(), ".synagent");
-const LEGACY_CONFIG_FILE = path.default.join(os.default.homedir(), ".omniagent", "config.json");
-const CONFIG_FILE = process.env.SYNAGENT_CONFIG || process.env.OMNIAGENT_CONFIG || path.default.join(DEFAULT_CONFIG_DIR, "config.json");
+const DEFAULT_CONFIG_DIR = process.env[CONFIG_CONSTANTS.ENV_DIR] || process.env[CONFIG_CONSTANTS.LEGACY_ENV_DIR] || path.default.join(os.default.homedir(), CONFIG_CONSTANTS.DIR_NAME);
+const LEGACY_CONFIG_FILE = path.default.join(os.default.homedir(), CONFIG_CONSTANTS.LEGACY_DIR_NAME, CONFIG_CONSTANTS.FILE_NAME);
+const CONFIG_FILE = process.env[CONFIG_CONSTANTS.ENV_CONFIG] || process.env[CONFIG_CONSTANTS.LEGACY_ENV_CONFIG] || path.default.join(DEFAULT_CONFIG_DIR, CONFIG_CONSTANTS.FILE_NAME);
 const VALID_BACKENDS = [
 	"codex",
 	"claude",
@@ -1307,8 +1365,8 @@ function setDefaultBackend(backend) {
 //#endregion
 //#region src/tools/config.tool.ts
 const setDefaultToolDefinition = {
-	name: "synagent_set_default",
-	description: "Set and persist your preferred default CLI agent backend in ~/.synagent/config.json.",
+	name: TOOL_NAMES.SET_DEFAULT,
+	description: `Set and persist your preferred default CLI agent backend in ~/${CONFIG_CONSTANTS.DIR_NAME}/${CONFIG_CONSTANTS.FILE_NAME}.`,
 	inputSchema: {
 		type: "object",
 		properties: { backend: {
@@ -1325,10 +1383,10 @@ const setDefaultToolDefinition = {
 };
 const legacySetDefaultToolDefinition = {
 	...setDefaultToolDefinition,
-	name: "omniagent_set_default",
-	description: "Backward-compatible alias for synagent_set_default."
+	name: TOOL_NAMES.LEGACY_SET_DEFAULT,
+	description: getLegacyAliasDescription(TOOL_NAMES.SET_DEFAULT)
 };
-async function handleOmniagentSetDefault(args) {
+async function handleSetDefault(args) {
 	setDefaultBackend(args.backend);
 	return { content: [{
 		type: "text",
@@ -1521,7 +1579,7 @@ async function selectSmartQuotaBackend(candidates = null, options = {}) {
 //#endregion
 //#region src/tools/quota.tool.ts
 const quotaToolDefinition = {
-	name: "synagent_quota_status",
+	name: TOOL_NAMES.QUOTA_STATUS,
 	description: "Check current 5-hour rolling limit headroom, usage percentages, and reset timestamps across active CLI backends without consuming generation tokens.",
 	inputSchema: {
 		type: "object",
@@ -1533,10 +1591,10 @@ const quotaToolDefinition = {
 };
 const legacyQuotaToolDefinition = {
 	...quotaToolDefinition,
-	name: "omniagent_quota_status",
-	description: "Backward-compatible alias for synagent_quota_status."
+	name: TOOL_NAMES.LEGACY_QUOTA_STATUS,
+	description: getLegacyAliasDescription(TOOL_NAMES.QUOTA_STATUS)
 };
-async function handleOmniagentQuotaStatus(args) {
+async function handleQuotaStatus(args) {
 	const quotas = await inspectQuotas(args.refresh === true);
 	return { content: [{
 		type: "text",
@@ -1546,7 +1604,7 @@ async function handleOmniagentQuotaStatus(args) {
 //#endregion
 //#region src/tools/issue.tool.ts
 const reportBugToolDefinition = {
-	name: "synagent_report_bug",
+	name: TOOL_NAMES.REPORT_BUG,
 	description: "Prepare a privacy-sanitized bug report and pre-filled GitHub issue URL to submit feedback or report issues to the maintainers.",
 	inputSchema: {
 		type: "object",
@@ -1564,10 +1622,10 @@ const reportBugToolDefinition = {
 };
 const legacyReportBugToolDefinition = {
 	...reportBugToolDefinition,
-	name: "omniagent_report_bug",
-	description: "Backward-compatible alias for synagent_report_bug."
+	name: TOOL_NAMES.LEGACY_REPORT_BUG,
+	description: getLegacyAliasDescription(TOOL_NAMES.REPORT_BUG)
 };
-async function handleOmniagentReportBug(args) {
+async function handleReportBug(args) {
 	const doctorReport = await runDoctor().catch(() => null);
 	return { content: [{
 		type: "text",
@@ -1581,8 +1639,8 @@ async function handleOmniagentReportBug(args) {
 //#endregion
 //#region src/services/session.service.ts
 function getSessionsDir() {
-	if (process.env.SYNAGENT_SESSIONS_DIR) return process.env.SYNAGENT_SESSIONS_DIR;
-	if (process.env.OMNIAGENT_SESSIONS_DIR) return process.env.OMNIAGENT_SESSIONS_DIR;
+	if (process.env[CONFIG_CONSTANTS.ENV_SESSIONS_DIR]) return process.env[CONFIG_CONSTANTS.ENV_SESSIONS_DIR];
+	if (process.env[CONFIG_CONSTANTS.LEGACY_ENV_SESSIONS_DIR]) return process.env[CONFIG_CONSTANTS.LEGACY_ENV_SESSIONS_DIR];
 	if (process.env.SYNAGENT_SESSIONS) {
 		const p = process.env.SYNAGENT_SESSIONS;
 		return p.endsWith(".json") ? path.default.join(path.default.dirname(p), "sessions") : p;
@@ -1591,7 +1649,7 @@ function getSessionsDir() {
 		const p = process.env.OMNIAGENT_SESSIONS;
 		return p.endsWith(".json") ? path.default.join(path.default.dirname(p), "sessions") : p;
 	}
-	return path.default.join(os.default.homedir(), ".synagent", "sessions");
+	return path.default.join(os.default.homedir(), CONFIG_CONSTANTS.DIR_NAME, "sessions");
 }
 function isProcessAlive(pid) {
 	if (!pid || typeof pid !== "number") return false;
@@ -1992,7 +2050,7 @@ function acquireAndResolveSession(sessionHandle, backendId = "codex", workspaceC
 //#endregion
 //#region src/tools/session.tool.ts
 const closeSessionToolDefinition = {
-	name: "synagent_close_session",
+	name: TOOL_NAMES.CLOSE_SESSION,
 	description: "Close and clean up an active multi-turn conversation session.",
 	inputSchema: {
 		type: "object",
@@ -2005,10 +2063,10 @@ const closeSessionToolDefinition = {
 };
 const legacyCloseSessionToolDefinition = {
 	...closeSessionToolDefinition,
-	name: "omniagent_close_session",
-	description: "Backward-compatible alias for synagent_close_session."
+	name: TOOL_NAMES.LEGACY_CLOSE_SESSION,
+	description: getLegacyAliasDescription(TOOL_NAMES.CLOSE_SESSION)
 };
-async function handleOmniagentCloseSession(args) {
+async function handleCloseSession(args) {
 	return { content: [{
 		type: "text",
 		text: closeSession(args.session_handle) ? `Session '${args.session_handle}' closed successfully.` : `Session '${args.session_handle}' not found or already closed.`
@@ -2510,17 +2568,17 @@ function getConsultToolDefinitions(codexConfig) {
 	};
 	return [
 		{
-			name: "synagent_consult",
+			name: TOOL_NAMES.CONSULT,
 			description: "Consult local reasoning agents (Codex or Claude Code) for a second opinion on architecture plans, refactoring strategies, or technical trade-offs.",
 			inputSchema: baseConsultSchema
 		},
 		{
-			name: "omniagent_consult",
-			description: "Backward-compatible alias for synagent_consult.",
+			name: TOOL_NAMES.LEGACY_CONSULT,
+			description: getLegacyAliasDescription(TOOL_NAMES.CONSULT),
 			inputSchema: baseConsultSchema
 		},
 		{
-			name: "codex_consult",
+			name: TOOL_NAMES.CODEX_CONSULT,
 			description: "Consult OpenAI Codex for a second opinion on an architecture plan, refactoring strategy, or technical trade-offs.",
 			inputSchema: {
 				type: "object",
@@ -2564,7 +2622,7 @@ async function handleConsult(toolName, args, workspaceCwd, abortSignal = null, o
 			text: "Validation Error: proposal must be a non-empty string."
 		}]
 	};
-	const backend = await resolveBackend(toolName === "codex_consult" ? "codex" : args.backend || "auto");
+	const backend = await resolveBackend(toolName === TOOL_NAMES.CODEX_CONSULT ? "codex" : args.backend || "auto");
 	const codexConfig = readCodexConfig();
 	const requestedModel = typeof args.model === "string" && args.model.trim() ? args.model.trim() : backend.id === "codex" ? codexConfig.defaultModel : "claude-3-7-sonnet";
 	const approval = checkModelGovernance(requestedModel, args.user_confirmed);
@@ -2686,17 +2744,17 @@ function getAnalyzeToolDefinitions(codexConfig) {
 	};
 	return [
 		{
-			name: "synagent_analyze",
+			name: TOOL_NAMES.ANALYZE,
 			description: "Perform deep architectural, dependency, and structural code analysis in read-only mode using local CLI reasoning agents.",
 			inputSchema: baseAnalyzeSchema
 		},
 		{
-			name: "omniagent_analyze",
-			description: "Backward-compatible alias for synagent_analyze.",
+			name: TOOL_NAMES.LEGACY_ANALYZE,
+			description: getLegacyAliasDescription(TOOL_NAMES.ANALYZE),
 			inputSchema: baseAnalyzeSchema
 		},
 		{
-			name: "codex_analyze",
+			name: TOOL_NAMES.CODEX_ANALYZE,
 			description: "Perform deep architectural, dependency, and structural code analysis in read-only sandbox mode using OpenAI Codex.",
 			inputSchema: {
 				type: "object",
@@ -2741,7 +2799,7 @@ async function handleAnalyze(toolName, args, workspaceCwd, abortSignal = null, o
 			text: "Validation Error: task must be a non-empty string."
 		}]
 	};
-	const backend = await resolveBackend(toolName === "codex_analyze" ? "codex" : args.backend || "auto");
+	const backend = await resolveBackend(toolName === TOOL_NAMES.CODEX_ANALYZE ? "codex" : args.backend || "auto");
 	const codexConfig = readCodexConfig();
 	const requestedModel = typeof args.model === "string" && args.model.trim() ? args.model.trim() : backend.id === "codex" ? codexConfig.defaultModel : "claude-3-7-sonnet";
 	const approval = checkModelGovernance(requestedModel, args.user_confirmed);
@@ -2816,7 +2874,7 @@ ${filesContext}`;
 //#region src/tools/debug.tool.ts
 function getDebugToolDefinition(codexConfig) {
 	return {
-		name: "codex_debug_error",
+		name: TOOL_NAMES.CODEX_DEBUG,
 		description: "Diagnose an error or stack trace using OpenAI Codex in read-only sandbox mode. Returns root cause analysis and a step-by-step fix recommendation.",
 		inputSchema: {
 			type: "object",
@@ -2894,7 +2952,7 @@ ${filesContext}`;
 //#region src/tools/implement.tool.ts
 function getImplementToolDefinition(codexConfig) {
 	return {
-		name: "codex_implement",
+		name: TOOL_NAMES.CODEX_IMPLEMENT,
 		description: "Implement a well-specified component, complex algorithm, or class in read-only sandbox mode. Codex outputs code without writing to disk.",
 		inputSchema: {
 			type: "object",
@@ -2990,8 +3048,8 @@ function validateToolArguments(args) {
 }
 function createServer() {
 	const server = new _modelcontextprotocol_sdk_server_index_js.Server({
-		name: "synagent",
-		version: "0.9.0-dev"
+		name: BRAND.SERVER_NAME,
+		version: BRAND.SERVER_VERSION
 	}, { capabilities: { tools: {} } });
 	server.setRequestHandler(_modelcontextprotocol_sdk_types_js.ListToolsRequestSchema, async () => {
 		const codexConfig = readCodexConfig();
@@ -3029,19 +3087,28 @@ function createServer() {
 		const progressToken = request.params._meta?.progressToken;
 		const onProgress = createProgressReporter(server, progressToken);
 		try {
-			if (name === "synagent_doctor" || name === "omniagent_doctor") return await handleOmniagentDoctor();
-			if (name === "synagent_set_default" || name === "omniagent_set_default") return await handleOmniagentSetDefault(args);
-			if (name === "synagent_quota_status" || name === "omniagent_quota_status") return await handleOmniagentQuotaStatus(args);
-			if (name === "synagent_report_bug" || name === "omniagent_report_bug") return await handleOmniagentReportBug(args);
-			if (name === "synagent_close_session" || name === "omniagent_close_session") return await handleOmniagentCloseSession(args);
-			if (name === "codex_status") return await handleCodexStatus();
-			const workspaceCwd = resolveWorkspacePath(args.workspace_path);
-			if (name === "synagent_review" || name === "omniagent_review" || name === "codex_review_code") return await handleReview(name, args, workspaceCwd, abortSignal, onProgress);
-			if (name === "synagent_consult" || name === "omniagent_consult" || name === "codex_consult") return await handleConsult(name, args, workspaceCwd, abortSignal, onProgress);
-			if (name === "synagent_analyze" || name === "omniagent_analyze" || name === "codex_analyze") return await handleAnalyze(name, args, workspaceCwd, abortSignal, onProgress);
-			if (name === "codex_debug_error") return await handleDebugError(args, workspaceCwd, abortSignal, onProgress);
-			if (name === "codex_implement") return await handleImplement(args, workspaceCwd, abortSignal, onProgress);
-			throw new Error(`Unknown tool: ${name}`);
+			switch (name) {
+				case TOOL_NAMES.DOCTOR:
+				case TOOL_NAMES.LEGACY_DOCTOR: return await handleDoctor();
+				case TOOL_NAMES.SET_DEFAULT:
+				case TOOL_NAMES.LEGACY_SET_DEFAULT: return await handleSetDefault(args);
+				case TOOL_NAMES.QUOTA_STATUS:
+				case TOOL_NAMES.LEGACY_QUOTA_STATUS: return await handleQuotaStatus(args);
+				case TOOL_NAMES.REPORT_BUG:
+				case TOOL_NAMES.LEGACY_REPORT_BUG: return await handleReportBug(args);
+				case TOOL_NAMES.CLOSE_SESSION:
+				case TOOL_NAMES.LEGACY_CLOSE_SESSION: return await handleCloseSession(args);
+				case TOOL_NAMES.CODEX_STATUS: return await handleCodexStatus();
+				default: {
+					const workspaceCwd = resolveWorkspacePath(args.workspace_path);
+					if (name === TOOL_NAMES.REVIEW || name === TOOL_NAMES.LEGACY_REVIEW || name === TOOL_NAMES.CODEX_REVIEW) return await handleReview(name, args, workspaceCwd, abortSignal, onProgress);
+					if (name === TOOL_NAMES.CONSULT || name === TOOL_NAMES.LEGACY_CONSULT || name === TOOL_NAMES.CODEX_CONSULT) return await handleConsult(name, args, workspaceCwd, abortSignal, onProgress);
+					if (name === TOOL_NAMES.ANALYZE || name === TOOL_NAMES.LEGACY_ANALYZE || name === TOOL_NAMES.CODEX_ANALYZE) return await handleAnalyze(name, args, workspaceCwd, abortSignal, onProgress);
+					if (name === TOOL_NAMES.CODEX_DEBUG) return await handleDebugError(args, workspaceCwd, abortSignal, onProgress);
+					if (name === TOOL_NAMES.CODEX_IMPLEMENT) return await handleImplement(args, workspaceCwd, abortSignal, onProgress);
+					throw new Error(`Unknown tool: ${name}`);
+				}
+			}
 		} catch (error) {
 			let bugPrompt = "";
 			try {
@@ -3055,7 +3122,7 @@ function createServer() {
 				isError: true,
 				content: [{
 					type: "text",
-					text: `OmniAgent Execution Error: ${error.message}${bugPrompt}`
+					text: `${BRAND.NAME} Execution Error: ${error.message}${bugPrompt}`
 				}]
 			};
 		}
@@ -3068,7 +3135,7 @@ async function run() {
 	const server = createServer();
 	const transport = new _modelcontextprotocol_sdk_server_stdio_js.StdioServerTransport();
 	await server.connect(transport);
-	process.stderr.write("SynAgent MCP Server (Cross-Agent CLI Bridge) running on stdio\n");
+	process.stderr.write(`${BRAND.NAME} MCP Server (${BRAND.TAGLINE}) running on stdio\n`);
 }
 run().catch((error) => {
 	process.stderr.write(`Fatal error in main(): ${error?.stack || error}\n`);

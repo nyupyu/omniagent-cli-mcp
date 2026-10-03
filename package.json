@@ -1,6 +1,6 @@
 {
-  "name": "synagent-mcp",
-  "displayName": "SynAgent MCP - Cross-Agent CLI Bridge",
+  "name": "synagent",
+  "displayName": "SynAgent - Cross-Agent CLI Bridge",
   "version": "0.9.0-dev",
   "description": "Bridge Codex CLI, Claude Code CLI, and Gemini CLI through MCP in VS Code, Cursor, and Antigravity.",
   "main": "dist/index.cjs",

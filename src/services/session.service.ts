@@ -9,13 +9,14 @@ import {
   AcquireSessionResult,
   GetSessionOptions,
 } from '../types/session.types.js';
+import { CONFIG_CONSTANTS } from '../constants/index.js';
 
 export function getSessionsDir(): string {
-  if (process.env.SYNAGENT_SESSIONS_DIR) {
-    return process.env.SYNAGENT_SESSIONS_DIR;
+  if (process.env[CONFIG_CONSTANTS.ENV_SESSIONS_DIR]) {
+    return process.env[CONFIG_CONSTANTS.ENV_SESSIONS_DIR]!;
   }
-  if (process.env.OMNIAGENT_SESSIONS_DIR) {
-    return process.env.OMNIAGENT_SESSIONS_DIR;
+  if (process.env[CONFIG_CONSTANTS.LEGACY_ENV_SESSIONS_DIR]) {
+    return process.env[CONFIG_CONSTANTS.LEGACY_ENV_SESSIONS_DIR]!;
   }
   if (process.env.SYNAGENT_SESSIONS) {
     const p = process.env.SYNAGENT_SESSIONS;
@@ -25,7 +26,7 @@ export function getSessionsDir(): string {
     const p = process.env.OMNIAGENT_SESSIONS;
     return p.endsWith('.json') ? path.join(path.dirname(p), 'sessions') : p;
   }
-  return path.join(os.homedir(), '.synagent', 'sessions');
+  return path.join(os.homedir(), CONFIG_CONSTANTS.DIR_NAME, 'sessions');
 }
 
 export const DEFAULT_SESSION_TTL_MS = 2 * 3600 * 1000; // 2 hours

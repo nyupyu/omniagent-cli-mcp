@@ -1,7 +1,8 @@
 import { closeSession } from '../services/session.service.js';
+import { TOOL_NAMES, getLegacyAliasDescription } from '../constants/index.js';
 
 export const closeSessionToolDefinition = {
-  name: 'synagent_close_session',
+  name: TOOL_NAMES.CLOSE_SESSION,
   description:
     'Close and clean up an active multi-turn conversation session.',
   inputSchema: {
@@ -18,11 +19,11 @@ export const closeSessionToolDefinition = {
 
 export const legacyCloseSessionToolDefinition = {
   ...closeSessionToolDefinition,
-  name: 'omniagent_close_session',
-  description: 'Backward-compatible alias for synagent_close_session.',
+  name: TOOL_NAMES.LEGACY_CLOSE_SESSION,
+  description: getLegacyAliasDescription(TOOL_NAMES.CLOSE_SESSION),
 };
 
-export async function handleOmniagentCloseSession(args: any) {
+export async function handleCloseSession(args: any) {
   const closed = closeSession(args.session_handle);
   return {
     content: [
@@ -35,3 +36,5 @@ export async function handleOmniagentCloseSession(args: any) {
     ],
   };
 }
+
+export const handleOmniagentCloseSession = handleCloseSession;
