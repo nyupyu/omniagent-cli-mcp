@@ -1,10 +1,11 @@
 import { checkModelGovernance } from '../services/policy.service.js';
 import * as codexAdapter from '../adapters/codex.adapter.js';
 import { formatExecutionResult } from './common.js';
+import { TOOL_NAMES } from '../constants/index.js';
 
 export function getDebugToolDefinition(codexConfig: any) {
   return {
-    name: 'codex_debug_error',
+    name: TOOL_NAMES.CODEX_DEBUG,
     description:
       'Diagnose an error or stack trace using OpenAI Codex in read-only sandbox mode. Returns root cause analysis and a step-by-step fix recommendation.',
     inputSchema: {

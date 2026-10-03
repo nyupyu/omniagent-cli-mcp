@@ -4,33 +4,34 @@ import { createProgressReporter } from './services/progress.service.js';
 import { resolveWorkspacePath } from './services/policy.service.js';
 import { generateBugReport } from './services/issue.service.js';
 import * as codexAdapter from './adapters/codex.adapter.js';
+import { BRAND, TOOL_NAMES } from './constants/index.js';
 
 import {
   doctorToolDefinition,
   legacyDoctorToolDefinition,
   codexStatusToolDefinition,
-  handleOmniagentDoctor,
+  handleDoctor,
   handleCodexStatus,
 } from './tools/doctor.tool.js';
 import {
   setDefaultToolDefinition,
   legacySetDefaultToolDefinition,
-  handleOmniagentSetDefault,
+  handleSetDefault,
 } from './tools/config.tool.js';
 import {
   quotaToolDefinition,
   legacyQuotaToolDefinition,
-  handleOmniagentQuotaStatus,
+  handleQuotaStatus,
 } from './tools/quota.tool.js';
 import {
   reportBugToolDefinition,
   legacyReportBugToolDefinition,
-  handleOmniagentReportBug,
+  handleReportBug,
 } from './tools/issue.tool.js';
 import {
   closeSessionToolDefinition,
   legacyCloseSessionToolDefinition,
-  handleOmniagentCloseSession,
+  handleCloseSession,
 } from './tools/session.tool.js';
 import { getReviewToolDefinitions, handleReview } from './tools/review.tool.js';
 import { getConsultToolDefinitions, handleConsult } from './tools/consult.tool.js';
@@ -99,8 +100,8 @@ function validateToolArguments(args: unknown): Record<string, unknown> {
 export function createServer(): Server {
   const server = new Server(
     {
-      name: 'synagent',
-      version: '0.9.0-dev',
+      name: BRAND.SERVER_NAME,
+      version: BRAND.SERVER_VERSION,
     },
     {
       capabilities: {
@@ -159,65 +160,80 @@ export function createServer(): Server {
     const onProgress = createProgressReporter(server, progressToken);
 
     try {
-      // 1. Doctor
-      if (name === 'synagent_doctor' || name === 'omniagent_doctor') {
-        return await handleOmniagentDoctor();
+      switch (name) {
+        // 1. Doctor
+        case TOOL_NAMES.DOCTOR:
+        case TOOL_NAMES.LEGACY_DOCTOR:
+          return await handleDoctor();
+
+        // 2. Set Default Backend
+        case TOOL_NAMES.SET_DEFAULT:
+        case TOOL_NAMES.LEGACY_SET_DEFAULT:
+          return await handleSetDefault(args);
+
+        // 3. Quota Status
+        case TOOL_NAMES.QUOTA_STATUS:
+        case TOOL_NAMES.LEGACY_QUOTA_STATUS:
+          return await handleQuotaStatus(args);
+
+        // 4. Report Bug
+        case TOOL_NAMES.REPORT_BUG:
+        case TOOL_NAMES.LEGACY_REPORT_BUG:
+          return await handleReportBug(args);
+
+        // 5. Close Session
+        case TOOL_NAMES.CLOSE_SESSION:
+        case TOOL_NAMES.LEGACY_CLOSE_SESSION:
+          return await handleCloseSession(args);
+
+        // 6. Legacy Codex Status
+        case TOOL_NAMES.CODEX_STATUS:
+          return await handleCodexStatus();
+
+        default: {
+          // Resolve workspace strictly for execution tools
+          const workspaceCwd = resolveWorkspacePath(args.workspace_path as string | undefined);
+
+          // Review
+          if (
+            name === TOOL_NAMES.REVIEW ||
+            name === TOOL_NAMES.LEGACY_REVIEW ||
+            name === TOOL_NAMES.CODEX_REVIEW
+          ) {
+            return await handleReview(name, args, workspaceCwd, abortSignal, onProgress);
+          }
+
+          // Consult
+          if (
+            name === TOOL_NAMES.CONSULT ||
+            name === TOOL_NAMES.LEGACY_CONSULT ||
+            name === TOOL_NAMES.CODEX_CONSULT
+          ) {
+            return await handleConsult(name, args, workspaceCwd, abortSignal, onProgress);
+          }
+
+          // Analyze
+          if (
+            name === TOOL_NAMES.ANALYZE ||
+            name === TOOL_NAMES.LEGACY_ANALYZE ||
+            name === TOOL_NAMES.CODEX_ANALYZE
+          ) {
+            return await handleAnalyze(name, args, workspaceCwd, abortSignal, onProgress);
+          }
+
+          // Debug
+          if (name === TOOL_NAMES.CODEX_DEBUG) {
+            return await handleDebugError(args, workspaceCwd, abortSignal, onProgress);
+          }
+
+          // Implement
+          if (name === TOOL_NAMES.CODEX_IMPLEMENT) {
+            return await handleImplement(args, workspaceCwd, abortSignal, onProgress);
+          }
+
+          throw new Error(`Unknown tool: ${name}`);
+        }
       }
-
-      // 2. Set Default Backend
-      if (name === 'synagent_set_default' || name === 'omniagent_set_default') {
-        return await handleOmniagentSetDefault(args);
-      }
-
-      // 3. Quota Status
-      if (name === 'synagent_quota_status' || name === 'omniagent_quota_status') {
-        return await handleOmniagentQuotaStatus(args);
-      }
-
-      // 4. Report Bug
-      if (name === 'synagent_report_bug' || name === 'omniagent_report_bug') {
-        return await handleOmniagentReportBug(args);
-      }
-
-      // 5. Close Session
-      if (name === 'synagent_close_session' || name === 'omniagent_close_session') {
-        return await handleOmniagentCloseSession(args);
-      }
-
-      // 6. Legacy Codex Status
-      if (name === 'codex_status') {
-        return await handleCodexStatus();
-      }
-
-      // Resolve workspace strictly
-      const workspaceCwd = resolveWorkspacePath(args.workspace_path as string | undefined);
-
-      // Review
-      if (name === 'synagent_review' || name === 'omniagent_review' || name === 'codex_review_code') {
-        return await handleReview(name, args, workspaceCwd, abortSignal, onProgress);
-      }
-
-      // Consult
-      if (name === 'synagent_consult' || name === 'omniagent_consult' || name === 'codex_consult') {
-        return await handleConsult(name, args, workspaceCwd, abortSignal, onProgress);
-      }
-
-      // Analyze
-      if (name === 'synagent_analyze' || name === 'omniagent_analyze' || name === 'codex_analyze') {
-        return await handleAnalyze(name, args, workspaceCwd, abortSignal, onProgress);
-      }
-
-      // Debug
-      if (name === 'codex_debug_error') {
-        return await handleDebugError(args, workspaceCwd, abortSignal, onProgress);
-      }
-
-      // Implement
-      if (name === 'codex_implement') {
-        return await handleImplement(args, workspaceCwd, abortSignal, onProgress);
-      }
-
-      throw new Error(`Unknown tool: ${name}`);
     } catch (error: any) {
       let bugPrompt = '';
       try {
@@ -235,7 +251,7 @@ export function createServer(): Server {
         content: [
           {
             type: 'text',
-            text: `OmniAgent Execution Error: ${error.message}${bugPrompt}`,
+            text: `${BRAND.NAME} Execution Error: ${error.message}${bugPrompt}`,
           },
         ],
       };

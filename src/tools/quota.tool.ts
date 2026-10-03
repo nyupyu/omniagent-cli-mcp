@@ -1,7 +1,8 @@
 import { inspectQuotas } from '../services/quota.service.js';
+import { TOOL_NAMES, getLegacyAliasDescription } from '../constants/index.js';
 
 export const quotaToolDefinition = {
-  name: 'synagent_quota_status',
+  name: TOOL_NAMES.QUOTA_STATUS,
   description:
     'Check current 5-hour rolling limit headroom, usage percentages, and reset timestamps across active CLI backends without consuming generation tokens.',
   inputSchema: {
@@ -17,11 +18,11 @@ export const quotaToolDefinition = {
 
 export const legacyQuotaToolDefinition = {
   ...quotaToolDefinition,
-  name: 'omniagent_quota_status',
-  description: 'Backward-compatible alias for synagent_quota_status.',
+  name: TOOL_NAMES.LEGACY_QUOTA_STATUS,
+  description: getLegacyAliasDescription(TOOL_NAMES.QUOTA_STATUS),
 };
 
-export async function handleOmniagentQuotaStatus(args: any) {
+export async function handleQuotaStatus(args: any) {
   const quotas = await inspectQuotas(args.refresh === true);
   return {
     content: [
@@ -32,3 +33,5 @@ export async function handleOmniagentQuotaStatus(args: any) {
     ],
   };
 }
+
+export const handleOmniagentQuotaStatus = handleQuotaStatus;

@@ -4,6 +4,7 @@ import { acquireAndResolveSession, releaseSessionTurn, updateSession } from '../
 import * as codexAdapter from '../adapters/codex.adapter.js';
 import * as claudeAdapter from '../adapters/claude.adapter.js';
 import { formatExecutionResult } from './common.js';
+import { TOOL_NAMES, getLegacyAliasDescription } from '../constants/index.js';
 
 export function getConsultToolDefinitions(codexConfig: any) {
   const baseConsultSchema = {
@@ -48,18 +49,18 @@ export function getConsultToolDefinitions(codexConfig: any) {
 
   return [
     {
-      name: 'synagent_consult',
+      name: TOOL_NAMES.CONSULT,
       description:
         'Consult local reasoning agents (Codex or Claude Code) for a second opinion on architecture plans, refactoring strategies, or technical trade-offs.',
       inputSchema: baseConsultSchema,
     },
     {
-      name: 'omniagent_consult',
-      description: 'Backward-compatible alias for synagent_consult.',
+      name: TOOL_NAMES.LEGACY_CONSULT,
+      description: getLegacyAliasDescription(TOOL_NAMES.CONSULT),
       inputSchema: baseConsultSchema,
     },
     {
-      name: 'codex_consult',
+      name: TOOL_NAMES.CODEX_CONSULT,
       description:
         'Consult OpenAI Codex for a second opinion on an architecture plan, refactoring strategy, or technical trade-offs.',
       inputSchema: {
@@ -111,7 +112,7 @@ export async function handleConsult(
     };
   }
 
-  const backendId = toolName === 'codex_consult' ? 'codex' : (args.backend || 'auto');
+  const backendId = toolName === TOOL_NAMES.CODEX_CONSULT ? 'codex' : (args.backend || 'auto');
   const backend = await resolveBackend(backendId);
 
   const codexConfig = codexAdapter.readCodexConfig();

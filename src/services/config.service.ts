@@ -2,10 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { BackendId, OmniAgentConfig, RoutingStrategy } from '../types/config.types.js';
+import { CONFIG_CONSTANTS } from '../constants/index.js';
 
-export const DEFAULT_CONFIG_DIR = process.env.SYNAGENT_DIR || process.env.OMNIAGENT_DIR || path.join(os.homedir(), '.synagent');
-export const LEGACY_CONFIG_FILE = path.join(os.homedir(), '.omniagent', 'config.json');
-export const CONFIG_FILE = process.env.SYNAGENT_CONFIG || process.env.OMNIAGENT_CONFIG || path.join(DEFAULT_CONFIG_DIR, 'config.json');
+export const DEFAULT_CONFIG_DIR =
+  process.env[CONFIG_CONSTANTS.ENV_DIR] ||
+  process.env[CONFIG_CONSTANTS.LEGACY_ENV_DIR] ||
+  path.join(os.homedir(), CONFIG_CONSTANTS.DIR_NAME);
+export const LEGACY_CONFIG_FILE = path.join(
+  os.homedir(),
+  CONFIG_CONSTANTS.LEGACY_DIR_NAME,
+  CONFIG_CONSTANTS.FILE_NAME
+);
+export const CONFIG_FILE =
+  process.env[CONFIG_CONSTANTS.ENV_CONFIG] ||
+  process.env[CONFIG_CONSTANTS.LEGACY_ENV_CONFIG] ||
+  path.join(DEFAULT_CONFIG_DIR, CONFIG_CONSTANTS.FILE_NAME);
 
 export const VALID_BACKENDS: BackendId[] = ['codex', 'claude', 'gemini', 'smart_quota'];
 export const VALID_STRATEGIES: RoutingStrategy[] = ['fixed', 'smart_quota'];

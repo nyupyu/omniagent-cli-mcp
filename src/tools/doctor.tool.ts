@@ -1,8 +1,9 @@
 import { runDoctor } from '../services/doctor.service.js';
 import * as codexAdapter from '../adapters/codex.adapter.js';
+import { TOOL_NAMES, getLegacyAliasDescription } from '../constants/index.js';
 
 export const doctorToolDefinition = {
-  name: 'synagent_doctor',
+  name: TOOL_NAMES.DOCTOR,
   description:
     'Comprehensive cross-agent diagnostic tool. Audits installations, paths, versions, and auth status of OpenAI Codex CLI, Claude Code CLI, and Gemini CLI without running silent background downloads.',
   inputSchema: {
@@ -13,12 +14,12 @@ export const doctorToolDefinition = {
 
 export const legacyDoctorToolDefinition = {
   ...doctorToolDefinition,
-  name: 'omniagent_doctor',
-  description: 'Backward-compatible alias for synagent_doctor.',
+  name: TOOL_NAMES.LEGACY_DOCTOR,
+  description: getLegacyAliasDescription(TOOL_NAMES.DOCTOR),
 };
 
 export const codexStatusToolDefinition = {
-  name: 'codex_status',
+  name: TOOL_NAMES.CODEX_STATUS,
   description:
     'Diagnostic check: returns the OpenAI Codex CLI installation status, configuration, available models, reasoning efforts, and active policies.',
   inputSchema: {
@@ -27,12 +28,14 @@ export const codexStatusToolDefinition = {
   },
 };
 
-export async function handleOmniagentDoctor() {
+export async function handleDoctor() {
   const report = await runDoctor();
   return {
     content: [{ type: 'text', text: JSON.stringify(report, null, 2) }],
   };
 }
+
+export const handleOmniagentDoctor = handleDoctor;
 
 export async function handleCodexStatus() {
   const probe = await codexAdapter.probe();

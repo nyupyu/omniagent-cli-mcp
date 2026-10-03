@@ -1,10 +1,11 @@
 import { checkModelGovernance } from '../services/policy.service.js';
 import * as codexAdapter from '../adapters/codex.adapter.js';
 import { formatExecutionResult } from './common.js';
+import { TOOL_NAMES } from '../constants/index.js';
 
 export function getImplementToolDefinition(codexConfig: any) {
   return {
-    name: 'codex_implement',
+    name: TOOL_NAMES.CODEX_IMPLEMENT,
     description:
       'Implement a well-specified component, complex algorithm, or class in read-only sandbox mode. Codex outputs code without writing to disk.',
     inputSchema: {

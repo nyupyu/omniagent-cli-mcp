@@ -1,8 +1,9 @@
 import os from 'os';
 import { BugReportOptions, BugReportResult } from '../types/issue.types.js';
+import { BRAND } from '../constants/index.js';
 
-export const REPO_OWNER = 'nyupyu';
-export const REPO_NAME = 'synagent';
+export const REPO_OWNER = BRAND.GITHUB_OWNER;
+export const REPO_NAME = BRAND.GITHUB_REPO;
 export const GITHUB_NEW_ISSUE_BASE = `https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/new`;
 export const MAX_RAW_INPUT_LENGTH = 4096;
 
@@ -140,7 +141,7 @@ ${safeDiag}
 \`\`\`
 
 ### Environment Details
-- **OmniAgent MCP Version**: 1.0.0
+- **${BRAND.NAME} MCP Version**: ${BRAND.SERVER_VERSION}
 - **Node.js**: ${process.version}
 - **OS**: ${os.type()} ${os.release()} (${os.arch()})
 - **Detected CLIs**:
@@ -165,7 +166,7 @@ ${doctorSummary}
       body,
       issueUrl,
       prompt:
-        `Would you like to report this issue to GitHub to help improve OmniAgent?\n\n` +
+        `Would you like to report this issue to GitHub to help improve ${BRAND.NAME}?\n\n` +
         `Click the link below to review and submit the pre-filled issue in your browser (no tokens or extra login needed):\n\n` +
         `**[Submit Bug Report on GitHub](${issueUrl})**\n\n` +
         `<details><summary>Preview Sanitized Report</summary>\n\n${body}\n</details>`,
