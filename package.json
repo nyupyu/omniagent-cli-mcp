@@ -1,16 +1,17 @@
 {
-  "name": "omniagent-mcp",
-  "displayName": "OmniAgent MCP - CLI Agent Bridge",
-  "version": "1.0.0-rc.1",
+  "name": "synagent-mcp",
+  "displayName": "SynAgent MCP - Cross-Agent CLI Bridge",
+  "version": "0.9.0-dev",
   "description": "Bridge Codex CLI, Claude Code CLI, and Gemini CLI through MCP in VS Code, Cursor, and Antigravity.",
   "main": "dist/index.cjs",
   "bin": {
-    "omniagent": "./dist/index.cjs",
-    "omniagent-mcp": "./dist/index.cjs"
+    "synagent": "./dist/index.cjs",
+    "synagent-mcp": "./dist/index.cjs",
+    "omniagent": "./dist/index.cjs"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nyupyu/omniagent.git"
+    "url": "https://github.com/nyupyu/synagent.git"
   },
   "author": {
     "name": "Oktawian Wybieralski",
@@ -31,7 +32,7 @@
     "node": ">=20.0.0"
   },
   "bugs": {
-    "url": "https://github.com/nyupyu/omniagent/issues"
+    "url": "https://github.com/nyupyu/synagent/issues"
   },
   "scripts": {
     "build": "node -r ./scripts/node20-polyfill.cjs ./node_modules/tsdown/dist/run.mjs src/index.ts --format cjs --target node20 --clean --sourcemap --no-config",

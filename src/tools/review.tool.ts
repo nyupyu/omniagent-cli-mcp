@@ -7,50 +7,57 @@ import * as claudeAdapter from '../adapters/claude.adapter.js';
 import { formatExecutionResult } from './common.js';
 
 export function getReviewToolDefinitions(codexConfig: any) {
+  const baseReviewSchema = {
+    type: 'object',
+    properties: {
+      scope: {
+        type: 'string',
+        description:
+          'Target changes to review. Formats: "uncommitted" (default), "staged", commit SHA ("a1b2c3d"), revision ("HEAD~1"), base branch ("main"), or revision range ("main...feature").',
+      },
+      instructions: {
+        type: 'string',
+        description: 'Review focus guidelines, constraints, conventions, or security/performance checks.',
+      },
+      backend: {
+        type: 'string',
+        enum: ['auto', 'codex', 'claude', 'smart_quota'],
+        description: 'CLI agent backend to execute the review (default: "auto", respecting configured default or smart_quota).',
+      },
+      workspace_path: {
+        type: 'string',
+        description: 'Optional absolute path to workspace root.',
+      },
+      model: {
+        type: 'string',
+        description: 'Optional model override for the selected backend.',
+      },
+      reasoning_effort: {
+        type: 'string',
+        description: 'Reasoning depth level (e.g. "low", "medium", "high", "xhigh", "max").',
+      },
+      user_confirmed: {
+        type: 'boolean',
+        description: 'Mandatory true confirmation if invoking top-tier models (e.g. "astra", "claude-3-opus").',
+      },
+      session_handle: {
+        type: 'string',
+        description: 'Optional persistent session handle from a previous turn to preserve full multi-turn context.',
+      },
+    },
+  };
+
   return [
     {
-      name: 'omniagent_review',
+      name: 'synagent_review',
       description:
         'Perform an automated code review on uncommitted changes, staged index, branches, or commits using local reasoning agents (Codex or Claude Code) in read-only sandbox mode.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          scope: {
-            type: 'string',
-            description:
-              'Target changes to review. Formats: "uncommitted" (default), "staged", commit SHA ("a1b2c3d"), revision ("HEAD~1"), base branch ("main"), or revision range ("main...feature").',
-          },
-          instructions: {
-            type: 'string',
-            description: 'Review focus guidelines, constraints, conventions, or security/performance checks.',
-          },
-          backend: {
-            type: 'string',
-            enum: ['auto', 'codex', 'claude', 'smart_quota'],
-            description: 'CLI agent backend to execute the review (default: "auto", respecting configured default or smart_quota).',
-          },
-          workspace_path: {
-            type: 'string',
-            description: 'Optional absolute path to workspace root.',
-          },
-          model: {
-            type: 'string',
-            description: 'Optional model override for the selected backend.',
-          },
-          reasoning_effort: {
-            type: 'string',
-            description: 'Reasoning depth level (e.g. "low", "medium", "high", "xhigh", "max").',
-          },
-          user_confirmed: {
-            type: 'boolean',
-            description: 'Mandatory true confirmation if invoking top-tier models (e.g. "astra", "claude-3-opus").',
-          },
-          session_handle: {
-            type: 'string',
-            description: 'Optional persistent session handle from a previous turn to preserve full multi-turn context.',
-          },
-        },
-      },
+      inputSchema: baseReviewSchema,
+    },
+    {
+      name: 'omniagent_review',
+      description: 'Backward-compatible alias for synagent_review.',
+      inputSchema: baseReviewSchema,
     },
     {
       name: 'codex_review_code',

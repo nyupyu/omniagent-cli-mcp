@@ -7,14 +7,31 @@ import * as codexAdapter from './adapters/codex.adapter.js';
 
 import {
   doctorToolDefinition,
+  legacyDoctorToolDefinition,
   codexStatusToolDefinition,
   handleOmniagentDoctor,
   handleCodexStatus,
 } from './tools/doctor.tool.js';
-import { setDefaultToolDefinition, handleOmniagentSetDefault } from './tools/config.tool.js';
-import { quotaToolDefinition, handleOmniagentQuotaStatus } from './tools/quota.tool.js';
-import { reportBugToolDefinition, handleOmniagentReportBug } from './tools/issue.tool.js';
-import { closeSessionToolDefinition, handleOmniagentCloseSession } from './tools/session.tool.js';
+import {
+  setDefaultToolDefinition,
+  legacySetDefaultToolDefinition,
+  handleOmniagentSetDefault,
+} from './tools/config.tool.js';
+import {
+  quotaToolDefinition,
+  legacyQuotaToolDefinition,
+  handleOmniagentQuotaStatus,
+} from './tools/quota.tool.js';
+import {
+  reportBugToolDefinition,
+  legacyReportBugToolDefinition,
+  handleOmniagentReportBug,
+} from './tools/issue.tool.js';
+import {
+  closeSessionToolDefinition,
+  legacyCloseSessionToolDefinition,
+  handleOmniagentCloseSession,
+} from './tools/session.tool.js';
 import { getReviewToolDefinitions, handleReview } from './tools/review.tool.js';
 import { getConsultToolDefinitions, handleConsult } from './tools/consult.tool.js';
 import { getAnalyzeToolDefinitions, handleAnalyze } from './tools/analyze.tool.js';
@@ -82,8 +99,8 @@ function validateToolArguments(args: unknown): Record<string, unknown> {
 export function createServer(): Server {
   const server = new Server(
     {
-      name: 'omniagent',
-      version: '1.0.0-rc.1',
+      name: 'synagent',
+      version: '0.9.0-dev',
     },
     {
       capabilities: {
@@ -97,20 +114,31 @@ export function createServer(): Server {
 
     return {
       tools: [
-        doctorToolDefinition,
-        setDefaultToolDefinition,
-        quotaToolDefinition,
-        reportBugToolDefinition,
-        closeSessionToolDefinition,
-        ...getReviewToolDefinitions(codexConfig).slice(0, 1), // omniagent_review
-        ...getConsultToolDefinitions(codexConfig).slice(0, 1), // omniagent_consult
-        ...getAnalyzeToolDefinitions(codexConfig).slice(0, 1), // omniagent_analyze
+        // Primary SynAgent Tools:
+        doctorToolDefinition, // synagent_doctor
+        setDefaultToolDefinition, // synagent_set_default
+        quotaToolDefinition, // synagent_quota_status
+        reportBugToolDefinition, // synagent_report_bug
+        closeSessionToolDefinition, // synagent_close_session
+        ...getReviewToolDefinitions(codexConfig).slice(0, 1), // synagent_review
+        ...getConsultToolDefinitions(codexConfig).slice(0, 1), // synagent_consult
+        ...getAnalyzeToolDefinitions(codexConfig).slice(0, 1), // synagent_analyze
+        // Backward-compatible OmniAgent Aliases:
+        legacyDoctorToolDefinition, // omniagent_doctor
+        legacySetDefaultToolDefinition, // omniagent_set_default
+        legacyQuotaToolDefinition, // omniagent_quota_status
+        legacyReportBugToolDefinition, // omniagent_report_bug
+        legacyCloseSessionToolDefinition, // omniagent_close_session
+        ...getReviewToolDefinitions(codexConfig).slice(1, 2), // omniagent_review
+        ...getConsultToolDefinitions(codexConfig).slice(1, 2), // omniagent_consult
+        ...getAnalyzeToolDefinitions(codexConfig).slice(1, 2), // omniagent_analyze
+        // Codex Legacy Tools:
         codexStatusToolDefinition,
         getDebugToolDefinition(codexConfig),
-        ...getAnalyzeToolDefinitions(codexConfig).slice(1), // codex_analyze
-        ...getReviewToolDefinitions(codexConfig).slice(1), // codex_review_code
+        ...getAnalyzeToolDefinitions(codexConfig).slice(2), // codex_analyze
+        ...getReviewToolDefinitions(codexConfig).slice(2), // codex_review_code
         getImplementToolDefinition(codexConfig),
-        ...getConsultToolDefinitions(codexConfig).slice(1), // codex_consult
+        ...getConsultToolDefinitions(codexConfig).slice(2), // codex_consult
       ],
     };
   });
@@ -132,27 +160,27 @@ export function createServer(): Server {
 
     try {
       // 1. Doctor
-      if (name === 'omniagent_doctor') {
+      if (name === 'synagent_doctor' || name === 'omniagent_doctor') {
         return await handleOmniagentDoctor();
       }
 
       // 2. Set Default Backend
-      if (name === 'omniagent_set_default') {
+      if (name === 'synagent_set_default' || name === 'omniagent_set_default') {
         return await handleOmniagentSetDefault(args);
       }
 
       // 3. Quota Status
-      if (name === 'omniagent_quota_status') {
+      if (name === 'synagent_quota_status' || name === 'omniagent_quota_status') {
         return await handleOmniagentQuotaStatus(args);
       }
 
       // 4. Report Bug
-      if (name === 'omniagent_report_bug') {
+      if (name === 'synagent_report_bug' || name === 'omniagent_report_bug') {
         return await handleOmniagentReportBug(args);
       }
 
       // 5. Close Session
-      if (name === 'omniagent_close_session') {
+      if (name === 'synagent_close_session' || name === 'omniagent_close_session') {
         return await handleOmniagentCloseSession(args);
       }
 
@@ -165,17 +193,17 @@ export function createServer(): Server {
       const workspaceCwd = resolveWorkspacePath(args.workspace_path as string | undefined);
 
       // Review
-      if (name === 'omniagent_review' || name === 'codex_review_code') {
+      if (name === 'synagent_review' || name === 'omniagent_review' || name === 'codex_review_code') {
         return await handleReview(name, args, workspaceCwd, abortSignal, onProgress);
       }
 
       // Consult
-      if (name === 'omniagent_consult' || name === 'codex_consult') {
+      if (name === 'synagent_consult' || name === 'omniagent_consult' || name === 'codex_consult') {
         return await handleConsult(name, args, workspaceCwd, abortSignal, onProgress);
       }
 
       // Analyze
-      if (name === 'omniagent_analyze' || name === 'codex_analyze') {
+      if (name === 'synagent_analyze' || name === 'omniagent_analyze' || name === 'codex_analyze') {
         return await handleAnalyze(name, args, workspaceCwd, abortSignal, onProgress);
       }
 

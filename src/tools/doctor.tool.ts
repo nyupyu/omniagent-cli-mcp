@@ -2,13 +2,19 @@ import { runDoctor } from '../services/doctor.service.js';
 import * as codexAdapter from '../adapters/codex.adapter.js';
 
 export const doctorToolDefinition = {
-  name: 'omniagent_doctor',
+  name: 'synagent_doctor',
   description:
-    'Comprehensive multi-agent diagnostic tool. Audits installations, paths, versions, and auth status of OpenAI Codex CLI, Claude Code CLI, and Gemini CLI without running silent background downloads.',
+    'Comprehensive cross-agent diagnostic tool. Audits installations, paths, versions, and auth status of OpenAI Codex CLI, Claude Code CLI, and Gemini CLI without running silent background downloads.',
   inputSchema: {
     type: 'object',
     properties: {},
   },
+};
+
+export const legacyDoctorToolDefinition = {
+  ...doctorToolDefinition,
+  name: 'omniagent_doctor',
+  description: 'Backward-compatible alias for synagent_doctor.',
 };
 
 export const codexStatusToolDefinition = {

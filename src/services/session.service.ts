@@ -11,14 +11,21 @@ import {
 } from '../types/session.types.js';
 
 export function getSessionsDir(): string {
+  if (process.env.SYNAGENT_SESSIONS_DIR) {
+    return process.env.SYNAGENT_SESSIONS_DIR;
+  }
   if (process.env.OMNIAGENT_SESSIONS_DIR) {
     return process.env.OMNIAGENT_SESSIONS_DIR;
+  }
+  if (process.env.SYNAGENT_SESSIONS) {
+    const p = process.env.SYNAGENT_SESSIONS;
+    return p.endsWith('.json') ? path.join(path.dirname(p), 'sessions') : p;
   }
   if (process.env.OMNIAGENT_SESSIONS) {
     const p = process.env.OMNIAGENT_SESSIONS;
     return p.endsWith('.json') ? path.join(path.dirname(p), 'sessions') : p;
   }
-  return path.join(os.homedir(), '.omniagent', 'sessions');
+  return path.join(os.homedir(), '.synagent', 'sessions');
 }
 
 export const DEFAULT_SESSION_TTL_MS = 2 * 3600 * 1000; // 2 hours

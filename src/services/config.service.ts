@@ -3,8 +3,9 @@ import path from 'path';
 import os from 'os';
 import { BackendId, OmniAgentConfig, RoutingStrategy } from '../types/config.types.js';
 
-export const DEFAULT_CONFIG_DIR = process.env.OMNIAGENT_DIR || path.join(os.homedir(), '.omniagent');
-export const CONFIG_FILE = process.env.OMNIAGENT_CONFIG || path.join(DEFAULT_CONFIG_DIR, 'config.json');
+export const DEFAULT_CONFIG_DIR = process.env.SYNAGENT_DIR || process.env.OMNIAGENT_DIR || path.join(os.homedir(), '.synagent');
+export const LEGACY_CONFIG_FILE = path.join(os.homedir(), '.omniagent', 'config.json');
+export const CONFIG_FILE = process.env.SYNAGENT_CONFIG || process.env.OMNIAGENT_CONFIG || path.join(DEFAULT_CONFIG_DIR, 'config.json');
 
 export const VALID_BACKENDS: BackendId[] = ['codex', 'claude', 'gemini', 'smart_quota'];
 export const VALID_STRATEGIES: RoutingStrategy[] = ['fixed', 'smart_quota'];
@@ -95,15 +96,21 @@ export function validateConfig(config: any): OmniAgentConfig {
 }
 
 export function loadConfig(): OmniAgentConfig {
-  if (!fs.existsSync(CONFIG_FILE)) {
+  const targetFile = fs.existsSync(CONFIG_FILE)
+    ? CONFIG_FILE
+    : (!process.env.SYNAGENT_CONFIG && !process.env.OMNIAGENT_CONFIG && fs.existsSync(LEGACY_CONFIG_FILE))
+      ? LEGACY_CONFIG_FILE
+      : null;
+
+  if (!targetFile) {
     return { ...DEFAULT_CONFIG, routing: { ...DEFAULT_CONFIG.routing, allowedBackends: [...DEFAULT_CONFIG.routing.allowedBackends] } };
   }
 
   let raw: string;
   try {
-    raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+    raw = fs.readFileSync(targetFile, 'utf8');
   } catch (err: any) {
-    throw new Error(`Configuration Error: Failed to read '${CONFIG_FILE}': ${err.message}`);
+    throw new Error(`Configuration Error: Failed to read '${targetFile}': ${err.message}`);
   }
 
   let parsed: any;

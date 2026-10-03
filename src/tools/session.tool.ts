@@ -1,7 +1,7 @@
 import { closeSession } from '../services/session.service.js';
 
 export const closeSessionToolDefinition = {
-  name: 'omniagent_close_session',
+  name: 'synagent_close_session',
   description:
     'Close and clean up an active multi-turn conversation session.',
   inputSchema: {
@@ -14,6 +14,12 @@ export const closeSessionToolDefinition = {
     },
     required: ['session_handle'],
   },
+};
+
+export const legacyCloseSessionToolDefinition = {
+  ...closeSessionToolDefinition,
+  name: 'omniagent_close_session',
+  description: 'Backward-compatible alias for synagent_close_session.',
 };
 
 export async function handleOmniagentCloseSession(args: any) {

@@ -6,51 +6,58 @@ import * as claudeAdapter from '../adapters/claude.adapter.js';
 import { formatExecutionResult } from './common.js';
 
 export function getAnalyzeToolDefinitions(codexConfig: any) {
+  const baseAnalyzeSchema = {
+    type: 'object',
+    properties: {
+      task: {
+        type: 'string',
+        description: 'The specific question, architectural aspect, or focus area to analyze.',
+      },
+      file_paths: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Optional list of files or directories to inspect.',
+      },
+      backend: {
+        type: 'string',
+        enum: ['auto', 'codex', 'claude', 'smart_quota'],
+        description: 'CLI agent backend to analyze with (default: "auto").',
+      },
+      workspace_path: {
+        type: 'string',
+        description: 'Optional absolute path to workspace root.',
+      },
+      model: {
+        type: 'string',
+        description: 'Optional model override.',
+      },
+      reasoning_effort: {
+        type: 'string',
+        description: 'Reasoning depth level (default: "high").',
+      },
+      user_confirmed: {
+        type: 'boolean',
+        description: 'Mandatory true confirmation if using top-tier models ("astra", "claude-3-opus").',
+      },
+      session_handle: {
+        type: 'string',
+        description: 'Optional persistent session handle from a previous turn to preserve full multi-turn context.',
+      },
+    },
+    required: ['task'],
+  };
+
   return [
     {
-      name: 'omniagent_analyze',
+      name: 'synagent_analyze',
       description:
         'Perform deep architectural, dependency, and structural code analysis in read-only mode using local CLI reasoning agents.',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          task: {
-            type: 'string',
-            description: 'The specific question, architectural aspect, or focus area to analyze.',
-          },
-          file_paths: {
-            type: 'array',
-            items: { type: 'string' },
-            description: 'Optional list of files or directories to inspect.',
-          },
-          backend: {
-            type: 'string',
-            enum: ['auto', 'codex', 'claude', 'smart_quota'],
-            description: 'CLI agent backend to analyze with (default: "auto").',
-          },
-          workspace_path: {
-            type: 'string',
-            description: 'Optional absolute path to workspace root.',
-          },
-          model: {
-            type: 'string',
-            description: 'Optional model override.',
-          },
-          reasoning_effort: {
-            type: 'string',
-            description: 'Reasoning depth level (default: "high").',
-          },
-          user_confirmed: {
-            type: 'boolean',
-            description: 'Mandatory true confirmation if using top-tier models ("astra", "claude-3-opus").',
-          },
-          session_handle: {
-            type: 'string',
-            description: 'Optional persistent session handle from a previous turn to preserve full multi-turn context.',
-          },
-        },
-        required: ['task'],
-      },
+      inputSchema: baseAnalyzeSchema,
+    },
+    {
+      name: 'omniagent_analyze',
+      description: 'Backward-compatible alias for synagent_analyze.',
+      inputSchema: baseAnalyzeSchema,
     },
     {
       name: 'codex_analyze',

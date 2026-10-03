@@ -2,7 +2,7 @@ import os from 'os';
 import { BugReportOptions, BugReportResult } from '../types/issue.types.js';
 
 export const REPO_OWNER = 'nyupyu';
-export const REPO_NAME = 'omniagent';
+export const REPO_NAME = 'synagent';
 export const GITHUB_NEW_ISSUE_BASE = `https://github.com/${REPO_OWNER}/${REPO_NAME}/issues/new`;
 export const MAX_RAW_INPUT_LENGTH = 4096;
 
