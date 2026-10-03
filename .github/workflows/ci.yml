@@ -29,8 +29,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify syntax
-        run: node --check index.js src/*.js src/adapters/*.js
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build bundle
+        run: npm run build
 
       - name: Run test suite
         run: npm test

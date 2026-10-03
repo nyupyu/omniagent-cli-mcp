@@ -1,12 +1,12 @@
 {
   "name": "omniagent-mcp",
   "displayName": "OmniAgent MCP - CLI Agent Bridge",
-  "version": "1.0.0",
+  "version": "1.0.0-rc.1",
   "description": "Bridge Codex CLI, Claude Code CLI, and Gemini CLI through MCP in VS Code, Cursor, and Antigravity.",
-  "main": "index.js",
+  "main": "dist/index.cjs",
   "bin": {
-    "omniagent": "./index.js",
-    "omniagent-mcp": "./index.js"
+    "omniagent": "./dist/index.cjs",
+    "omniagent-mcp": "./dist/index.cjs"
   },
   "repository": {
     "type": "git",
@@ -20,6 +20,7 @@
   "license": "MIT",
   "type": "commonjs",
   "files": [
+    "dist/",
     "index.js",
     "src/",
     "assets/",
@@ -33,8 +34,10 @@
     "url": "https://github.com/nyupyu/omniagent-cli-mcp/issues"
   },
   "scripts": {
-    "start": "node index.js",
-    "test": "node --test test/*.test.js"
+    "build": "node -r ./scripts/node20-polyfill.cjs ./node_modules/tsdown/dist/run.mjs src/index.ts --format cjs --target node20 --clean --sourcemap --no-config",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.cjs",
+    "test": "tsx --test"
   },
   "keywords": [
     "cli",
@@ -51,5 +54,11 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsdown": "^0.23.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
   }
 }

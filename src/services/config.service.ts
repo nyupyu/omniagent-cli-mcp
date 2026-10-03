@@ -1,25 +1,24 @@
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { BackendId, OmniAgentConfig, RoutingStrategy } from '../types/config.types.js';
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+export const DEFAULT_CONFIG_DIR = process.env.OMNIAGENT_DIR || path.join(os.homedir(), '.omniagent');
+export const CONFIG_FILE = process.env.OMNIAGENT_CONFIG || path.join(DEFAULT_CONFIG_DIR, 'config.json');
 
-const DEFAULT_CONFIG_DIR = process.env.OMNIAGENT_DIR || path.join(os.homedir(), '.omniagent');
-const CONFIG_FILE = process.env.OMNIAGENT_CONFIG || path.join(DEFAULT_CONFIG_DIR, 'config.json');
+export const VALID_BACKENDS: BackendId[] = ['codex', 'claude', 'gemini', 'smart_quota'];
+export const VALID_STRATEGIES: RoutingStrategy[] = ['fixed', 'smart_quota'];
 
-const VALID_BACKENDS = ['codex', 'claude', 'gemini', 'smart_quota'];
-const VALID_STRATEGIES = ['fixed', 'smart_quota'];
-
-const DEFAULT_CONFIG = {
+export const DEFAULT_CONFIG: OmniAgentConfig = {
   schemaVersion: 1,
   defaultBackend: null, // null triggers onboarding if multiple backends detected
   routing: {
-    strategy: 'fixed', // 'fixed' | 'smart_quota'
+    strategy: 'fixed',
     allowedBackends: ['codex', 'claude'],
   },
 };
 
-function ensureConfigDir() {
+export function ensureConfigDir(): void {
   const dir = path.dirname(CONFIG_FILE);
   if (!fs.existsSync(dir)) {
     try {
@@ -28,7 +27,7 @@ function ensureConfigDir() {
   }
 }
 
-function validateConfig(config) {
+export function validateConfig(config: any): OmniAgentConfig {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new Error('Configuration Error: configuration must be a valid JSON object.');
   }
@@ -40,12 +39,12 @@ function validateConfig(config) {
 
   let defaultBackend = config.defaultBackend;
   if (defaultBackend !== null && defaultBackend !== undefined) {
-    if (typeof defaultBackend !== 'string' || !VALID_BACKENDS.includes(defaultBackend.toLowerCase())) {
+    if (typeof defaultBackend !== 'string' || !VALID_BACKENDS.includes(defaultBackend.toLowerCase() as BackendId)) {
       throw new Error(
         `Configuration Error: Invalid defaultBackend: '${defaultBackend}'. Supported: ${VALID_BACKENDS.join(', ')} or null.`
       );
     }
-    defaultBackend = defaultBackend.toLowerCase();
+    defaultBackend = defaultBackend.toLowerCase() as BackendId;
   } else {
     defaultBackend = null;
   }
@@ -81,7 +80,7 @@ function validateConfig(config) {
           );
         }
       }
-      allowedBackends = routing.allowedBackends.map((b) => b.toLowerCase());
+      allowedBackends = routing.allowedBackends.map((b: string) => b.toLowerCase());
     }
   }
 
@@ -95,29 +94,29 @@ function validateConfig(config) {
   };
 }
 
-function loadConfig() {
+export function loadConfig(): OmniAgentConfig {
   if (!fs.existsSync(CONFIG_FILE)) {
-    return { ...DEFAULT_CONFIG };
+    return { ...DEFAULT_CONFIG, routing: { ...DEFAULT_CONFIG.routing, allowedBackends: [...DEFAULT_CONFIG.routing.allowedBackends] } };
   }
 
-  let raw;
+  let raw: string;
   try {
     raw = fs.readFileSync(CONFIG_FILE, 'utf8');
-  } catch (err) {
+  } catch (err: any) {
     throw new Error(`Configuration Error: Failed to read '${CONFIG_FILE}': ${err.message}`);
   }
 
-  let parsed;
+  let parsed: any;
   try {
     parsed = JSON.parse(raw);
-  } catch (err) {
+  } catch (err: any) {
     throw new Error(`Configuration Error: Malformed JSON in '${CONFIG_FILE}': ${err.message}`);
   }
 
   return validateConfig(parsed);
 }
 
-function saveConfig(updates) {
+export function saveConfig(updates: Partial<OmniAgentConfig>): OmniAgentConfig {
   ensureConfigDir();
   const current = fs.existsSync(CONFIG_FILE) ? loadConfig() : { ...DEFAULT_CONFIG };
   const merged = validateConfig({
@@ -135,26 +134,16 @@ function saveConfig(updates) {
   return merged;
 }
 
-function getDefaultBackend() {
+export function getDefaultBackend(): BackendId | null {
   const config = loadConfig();
   return config.defaultBackend;
 }
 
-function setDefaultBackend(backend) {
-  if (typeof backend !== 'string' || !VALID_BACKENDS.includes(backend.toLowerCase())) {
+export function setDefaultBackend(backend: unknown): OmniAgentConfig {
+  if (typeof backend !== 'string' || !VALID_BACKENDS.includes(backend.toLowerCase() as BackendId)) {
     throw new Error(
       `Validation Error: backend must be one of: ${VALID_BACKENDS.join(', ')}. Received: '${backend}'`
     );
   }
-  return saveConfig({ defaultBackend: backend.toLowerCase() });
+  return saveConfig({ defaultBackend: backend.toLowerCase() as BackendId });
 }
-
-module.exports = {
-  loadConfig,
-  saveConfig,
-  getDefaultBackend,
-  setDefaultBackend,
-  validateConfig,
-  CONFIG_FILE,
-  VALID_BACKENDS,
-};

@@ -1,21 +1,35 @@
-'use strict';
+import { runCommand } from './process.service.js';
 
-const { runCommand } = require('./process.js');
+export interface GitScopeInfo {
+  type: 'uncommitted' | 'staged' | 'range' | 'commit' | 'branch';
+  label: string;
+  diff: string;
+  nativeArgs: string[] | null;
+}
 
-async function runGit(args, cwd = process.cwd(), abortSignal = null, timeoutMs = 15000) {
+export async function runGit(
+  args: string[],
+  cwd = process.cwd(),
+  abortSignal: AbortSignal | null = null,
+  timeoutMs = 15000
+): Promise<string> {
   const result = await runCommand('git', args, {
     cwd,
     abortSignal,
     timeoutMs,
+    maxBufferBytes: 4 * 1024 * 1024,
   });
 
   if (result.exitCode !== 0) {
     throw new Error(result.stderr.trim() || `Git exited with code ${result.exitCode}`);
   }
+  if (result.isTruncated || result.stdout.includes('...[stdout truncated: buffer limit reached]')) {
+    return result.stdout + '\n\n[Warning: Git diff exceeded buffer limit (4MB) and was truncated.]';
+  }
   return result.stdout;
 }
 
-function sanitizeGitRef(ref) {
+export function sanitizeGitRef(ref: unknown): string {
   if (typeof ref !== 'string') {
     throw new Error('Validation Error: Git ref must be a string.');
   }
@@ -29,7 +43,11 @@ function sanitizeGitRef(ref) {
   return clean;
 }
 
-async function collectGitScope(rawScope, workspaceCwd, abortSignal = null) {
+export async function collectGitScope(
+  rawScope?: string | null,
+  workspaceCwd = process.cwd(),
+  abortSignal: AbortSignal | null = null
+): Promise<GitScopeInfo> {
   const scope = typeof rawScope === 'string' && rawScope.trim() ? rawScope.trim() : 'uncommitted';
 
   if (scope !== 'uncommitted' && scope.startsWith('-')) {
@@ -139,12 +157,6 @@ async function collectGitScope(rawScope, workspaceCwd, abortSignal = null) {
     type: 'branch',
     label: `Branch comparison against ${branchName} (${branchName}...HEAD)`,
     diff: diff.trim(),
-    nativeArgs: ['--base', branchName],
+    nativeArgs: null,
   };
 }
-
-module.exports = {
-  runGit,
-  sanitizeGitRef,
-  collectGitScope,
-};

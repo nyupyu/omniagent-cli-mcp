@@ -1,13 +1,16 @@
-'use strict';
+import fs from 'fs';
 
-const fs = require('fs');
+export const GOVERNED_TOP_TIER_MODELS = new Set(['astra', 'claude-3-opus', 'claude-3-opus-20240229', 'opus']);
 
-const GOVERNED_TOP_TIER_MODELS = new Set(['astra', 'claude-3-opus', 'claude-3-opus-20240229', 'opus']);
+export interface GovernanceCheckResult {
+  isError: true;
+  content: Array<{ type: 'text'; text: string }>;
+}
 
 /**
  * Validates whether top-tier expensive reasoning models have explicit user confirmation.
  */
-function checkModelGovernance(modelName, userConfirmed = false) {
+export function checkModelGovernance(modelName?: string | null, userConfirmed = false): GovernanceCheckResult | null {
   if (typeof modelName !== 'string') return null;
 
   const normalized = modelName.trim().toLowerCase();
@@ -33,7 +36,7 @@ function checkModelGovernance(modelName, userConfirmed = false) {
 /**
  * Resolves workspace path strictly; errors out if explicit path does not exist.
  */
-function resolveWorkspacePath(rawPath) {
+export function resolveWorkspacePath(rawPath?: string | null): string {
   if (typeof rawPath === 'string' && rawPath.trim()) {
     const cleanPath = rawPath.trim();
     if (!fs.existsSync(cleanPath)) {
@@ -47,9 +50,3 @@ function resolveWorkspacePath(rawPath) {
   }
   return process.cwd();
 }
-
-module.exports = {
-  checkModelGovernance,
-  resolveWorkspacePath,
-  GOVERNED_TOP_TIER_MODELS,
-};
