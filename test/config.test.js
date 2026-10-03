@@ -14,14 +14,14 @@ const testQuotaCache = path.join(testTempDir, 'quota-cache.json');
 process.env.OMNIAGENT_CONFIG = testConfigFile;
 process.env.OMNIAGENT_QUOTA_CACHE = testQuotaCache;
 
-const { loadConfig, saveConfig, setDefaultBackend, validateConfig } = require('../src/config.js');
+const { loadConfig, saveConfig, setDefaultBackend, validateConfig } = require('../src/services/config.service.ts');
 const {
   inspectQuotas,
   selectSmartQuotaBackend,
   recordQuotaCooldown,
   checkAndRecordRateLimit,
   isRateLimitError,
-} = require('../src/quota.js');
+} = require('../src/services/quota.service.ts');
 
 test.after(() => {
   try {

@@ -148,36 +148,78 @@ Users encounter errors or environment quirks and want to report bugs directly to
 
 ---
 
-## 7. Modular Codebase Architecture (`src/`)
+## 7. TypeScript Architecture & Fast Bundling Blueprint (`tsdown`)
 
+> *"When building an MCP (Model Context Protocol) server for VS Code, TypeScript (TS) is highly recommended over plain JavaScript (JS)."*
+
+To ensure long-term maintainability, eliminate monolithic handler files, and establish strong compile-time type safety before tagging v1.0.0, OmniAgent adopts modern TypeScript with **`tsdown`** as the dedicated bundler (following best practices from [modelcontextprotocol.io](https://modelcontextprotocol.io/docs/2026-07-28/develop/build-server), [masseater/mcp-server-template](https://github.com/masseater/mcp-server-template), and [tsdown.dev](https://tsdown.dev)).
+
+### 7.1 Bundler Selection: Why `tsdown` over Webpack & `tsup`
+
+- **Webpack is deprecated for Node CLI/MCP servers:** Webpack was designed for browsers and complex frontend bundling; in Node.js stdio MCP servers, it adds heavy overhead, 15-30s build times, and bloated configuration.
+- **`tsup` is in maintenance mode:** As officially announced by the author:
+  > *"This project is not actively maintained anymore. Please consider using [tsdown](https://github.com/rolldown/tsdown/) instead. Read more in [the migration guide](https://tsdown.dev/guide/migrate-from-tsup)."*
+- **`tsdown` (Powered by Rolldown + Oxc in Rust):**
+  - **Blazing Fast:** 2x to 8x faster than `tsup`, compiling and bundling in under 100ms.
+  - **Single Executable Bundle (`bundle: true`):** Bundles dependencies into a single output file (`dist/index.cjs`), cutting VS Code cold-start latency to near-instant by eliminating multi-file disk traversal of `node_modules`.
+  - **Target Node 22+ LTS:** Clean ECMAScript syntax compilation targeting Node.js 22 LTS.
+  - **Native Hashbang Support:** Preserves `#!/usr/bin/env node` and produces directly executable binaries for CLI and MCP clients.
+  - **Output Format (CommonJS `format: ['cjs']`):** Guarantees rock-solid stability with Node stdio transport, child process spawning, and backward compatibility with test harnesses.
+
+### 7.2 Stdio Protocol & Stderr Safety (Codex Sol Audit Mandate)
+
+- **Exclusive Protocol Ownership:** **Only the MCP transport writes to `process.stdout`**.
+- **No stdout pollution:** Direct stdout writes, `console.log`, and child process stdout inheritance are strictly prohibited.
+- **Injected Stderr Logger:** All operational logs, diagnostics, and debug traces are directed to `stderr` (`console.error`).
+
+### 7.3 Session Lock Race Resolution (Codex Sol Audit Mandate)
+
+- Rather than relying on a potentially destructive reap-rename that could stomp a concurrently acquired fresh lock, the TypeScript `SessionService` implements:
+  - Exclusive atomic lock acquisition.
+  - Asynchronous bounded backoff retry loop (replacing blocking synchronous busy-spin).
+  - Explicit per-turn ownership tokens validated on write and release.
+
+### 7.4 Refactored Modular Structure:
 ```text
 omniagent-cli-mcp/
-├── index.js                  # Main MCP server (tool registration, lifecycle, handlers)
+├── tsconfig.json                 # Strict TypeScript configuration (target: ES2022, moduleResolution: NodeNext)
+├── tsdown.config.ts              # Modern Rust-powered bundler config (format: cjs, target: node22, bundle: true)
+├── package.json                  # scripts: build, dev, test, typecheck; bin: dist/index.cjs
 ├── src/
-│   ├── config.js             # ~/.omniagent/config.json management & strict schema validation
-│   ├── quota.js              # 5-hour limit tracking, cooldown sanitization & smart_quota selection
-│   ├── policy.js             # Security policy, read-only guardrails & model governance
-│   ├── process.js            # Cross-platform process supervisor (stdin piping, taskkill/SIGTERM)
-│   ├── git.js                # Git scope collection (collectGitScope) & ref sanitization (sanitizeGitRef)
-│   ├── progress.js           # MCP progress notifications (indeterminate observedUpdates)
-│   ├── doctor.js             # omniagent_doctor: zero-download diagnostics for Codex, Claude, Gemini
-│   ├── router.js             # Multi-agent router enforcing privacy guards & onboarding
-│   ├── session.js            # [v1.1.0] Session handle mapping & thread resumption manager
-│   ├── issue.js              # [v1.1.0] Sanitized GitHub issue URL & gh CLI reporting
-│   └── adapters/
-│       ├── codex.js          # OpenAI Codex CLI adapter (exec, review, status, JSONL streaming)
-│       ├── claude.js         # Claude Code CLI adapter (--tools Read,Glob,Grep, streaming)
-│       └── gemini.js         # Gemini CLI prober (version, auth, config)
-├── test/
-│   ├── config.test.js        # Config schema, test isolation, quota cooldowns & smart routing
-│   ├── git.test.js           # Git scope parsing & injection sanitization tests
-│   ├── doctor.test.js        # Doctor diagnostic engine & CLI probe tests
-│   └── policy.test.js        # Model governance (astra/opus) & workspace path verification
-├── .github/
-│   └── workflows/
-│       └── ci.yml            # Multi-OS CI matrix (Ubuntu, macOS, Windows on Node 20 & 22)
-├── package.json              # files: ["index.js", "src/", "assets/", "README.md", "LICENSE"]
-└── README.md                 # Documentation, badges, and quick-start reference
+│   ├── index.ts                  # Minimal CLI bootstrap, hashbang, & StdioServerTransport lifecycle
+│   ├── server.ts                 # McpServer instantiation & modular tool attachment
+│   ├── types/                    # Shared TypeScript interfaces & types
+│   │   ├── adapter.types.ts
+│   │   ├── session.types.ts
+│   │   ├── config.types.ts
+│   │   ├── quota.types.ts
+│   │   └── issue.types.ts
+│   ├── services/                 # Core domain business logic
+│   │   ├── session.service.ts    # Atomic turn locking & persistence (safe async backoff)
+│   │   ├── quota.service.ts      # Cooldown & rolling limit tracking
+│   │   ├── router.service.ts     # Privacy guard & backend resolution
+│   │   ├── issue.service.ts      # Privacy redaction & GitHub bug reports
+│   │   ├── config.service.ts     # User preference persistence
+│   │   ├── git.service.ts        # Git scope & ref sanitization
+│   │   └── policy.service.ts     # Astra/Opus model governance
+│   ├── adapters/                 # Typed CLI process adapters
+│   │   ├── base.adapter.ts       # Shared adapter interface and safe stream decoder
+│   │   ├── codex.adapter.ts      # Codex CLI streaming & execution
+│   │   ├── claude.adapter.ts     # Claude Code CLI sandboxed execution
+│   │   └── gemini.adapter.ts     # Gemini CLI prober
+│   └── tools/                    # Modular typed tool definitions
+│       ├── review.tool.ts        # omniagent_review & codex_review_code
+│       ├── consult.tool.ts       # omniagent_consult & codex_consult
+│       ├── analyze.tool.ts       # omniagent_analyze & codex_analyze
+│       ├── debug.tool.ts         # codex_debug_error
+│       ├── implement.tool.ts     # codex_implement
+│       ├── doctor.tool.ts        # omniagent_doctor & codex_status
+│       ├── quota.tool.ts         # omniagent_quota_status
+│       ├── config.tool.ts        # omniagent_set_default
+│       ├── session.tool.ts       # omniagent_close_session
+│       └── issue.tool.ts         # omniagent_report_bug
+├── test/                         # Unit tests (node --test)
+└── dist/                         # Compiled bundle (dist/index.cjs)
 ```
 
 ---
@@ -191,30 +233,57 @@ omniagent-cli-mcp/
 4. **`omniagent_analyze`** — Cross-model codebase and dependency analysis in read-only mode.
 5. **`omniagent_set_default`** — Persistently sets the default backend in `~/.omniagent/config.json`.
 6. **`omniagent_quota_status`** — Fast inspection of active rate limits and cooldown statuses.
-7. **`omniagent_report_bug`** — [v1.1.0] Generates sanitized GitHub issue report URL / submits via GitHub CLI with user consent.
-8. **`omniagent_close_session`** — [v1.1.0] Closes and clears active multi-turn session handle.
+7. **`omniagent_report_bug`** — Generates sanitized GitHub issue report URL / submits via GitHub CLI with user consent.
+8. **`omniagent_close_session`** — Closes and clears active multi-turn session handle.
 
 ### Legacy Codex Tools (100% Backward Compatible):
-- `codex_status` $\rightarrow$ `src/adapters/codex.js:status`
-- `codex_review_code` $\rightarrow$ `src/adapters/codex.js:review`
-- `codex_consult` $\rightarrow$ `src/adapters/codex.js:consult`
-- `codex_analyze` $\rightarrow$ `src/adapters/codex.js:analyze`
-- `codex_debug_error` $\rightarrow$ `src/adapters/codex.js:debug`
-- `codex_implement` $\rightarrow$ `src/adapters/codex.js:implement`
+- `codex_status` $\rightarrow$ `src/tools/doctor.tool.ts`
+- `codex_review_code` $\rightarrow$ `src/tools/review.tool.ts`
+- `codex_consult` $\rightarrow$ `src/tools/consult.tool.ts`
+- `codex_analyze` $\rightarrow$ `src/tools/analyze.tool.ts`
+- `codex_debug_error` $\rightarrow$ `src/tools/debug.tool.ts`
+- `codex_implement` $\rightarrow$ `src/tools/implement.tool.ts`
 
 ---
 
-## 9. Execution Checklist
+## 9. Execution Checklist & Migration Plan
 
 - [x] **Step 1: Core utility modules** (`src/process.js`, `src/git.js`, `src/progress.js`, `src/policy.js`).
-- [x] **Step 2: Backend adapters** (`src/adapters/codex.js`, `src/adapters/claude.js`, `src/adapters/gemini.js`).
-- [x] **Step 3: Diagnostic engine** (`src/doctor.js`).
-- [x] **Step 4: Unified server integration** (`index.js`) maintaining 100% legacy schema compatibility.
-- [x] **Step 5: Package configuration** (`package.json`, `files: ["index.js", "src/", ...]`, test script).
-- [x] **Step 6: Unit & contract tests** (`test/*.test.js` — 9/9 passing).
-- [x] **Step 7: GitHub Actions CI workflow** (`.github/workflows/ci.yml`).
-- [x] **Step 8: Persistent onboarding & config schema** (`src/config.js`, tool `omniagent_set_default`).
-- [x] **Step 9: Quota tracking & smart routing** (`src/quota.js`, tool `omniagent_quota_status`).
-- [x] **Step 10: Maker-Checker audit verification & clean sign-off with Codex Sol**.
-- [ ] **Step 11: Release v1.0.0 (Git commit, tag v1.0.0, push to remote, npm publish)**.
-- [ ] **Step 12: v1.1.0 Milestone: JSONL thought/activity streaming (`--json`), multi-turn session persistence (`resume`), and GitHub bug reporting**.
+- [x] **Step 2: Backend adapters & JSONL streaming** (`src/adapters/codex.js`, `src/adapters/claude.js`, `src/adapters/gemini.js`).
+- [x] **Step 3: Multi-turn session persistence & turn locking** (`src/session.js`).
+- [x] **Step 4: Sanitized issue reporting & secret redaction** (`src/issue.js`).
+- [x] **Step 5: Diagnostic engine & persistent onboarding** (`src/doctor.js`, `src/config.js`, `src/quota.js`).
+- [x] **Step 6: TypeScript & `tsdown` Toolchain Setup** (`npm install -D tsdown typescript @types/node`, `tsdown.config.mts`, `tsconfig.json`).
+- [x] **Step 7: Modular TS Architecture Migration** (Disassemble monolithic code into `src/types/*.ts`, `src/services/*.ts`, `src/adapters/*.ts`, `src/tools/*.ts`, `src/server.ts`, `src/index.ts`).
+- [x] **Step 8: Build Verification & Strict Typecheck** (`npm run typecheck`, `npm run build`, `npm test` verifying 100% test pass).
+- [x] **Step 9: Maker-Checker Audit Gateway & Hardening (Codex Sol Consultation)**:
+  - [x] **9.1 Routing Consistency**: Filter `smart_quota` candidates strictly against `routing.allowedBackends` and verify `probe.installed` before returning.
+  - [x] **9.2 Contract Strict Typing**: Replace `adapter: any` and `request.params as any` with `CliAdapter` interfaces and runtime schema validation.
+  - [x] **9.3 Process & Stream Safety**: Enforce process tree termination on POSIX (`-proc.pid`) and bounded stream buffers for stdout/stderr to prevent memory leaks.
+  - [x] **9.4 CI Matrix Hardening**: Fix Node 20 Windows glob expansion issue (`Could not find ...\test\*.test.js`) and update CI workflow from legacy `node --check` to `npm run typecheck` + `npm run build`.
+- [x] **Step 10: Maker-Checker Final Sign-Off (`codex_review_code`)** for zero P1/P2 findings.
+- [x] **Step 11: Release Candidate (RC) Tagging & Extension Verification**:
+  - [x] Git commit and tag `v1.0.0-rc.1`.
+  - [x] End-to-end verification across VS Code and Antigravity.
+  - [x] Package validation (`npm pack --dry-run`).
+
+---
+
+## 10. Audit Findings from Codex Sol (`gpt-6.1-sol`)
+
+During live MCP consultation on October 3, 2026, **Codex Sol** (`gpt-6.1-sol`) audited the newly migrated TypeScript codebase and approved the core architecture while recommending 4 key hardenings for Release Candidate:
+
+1. **Routing Policy Consistency (`router.service.ts`):**
+   - The `smart_quota` path must strictly filter candidates against `config.routing.allowedBackends` before passing them to `selectSmartQuotaBackend`.
+   - The selected backend must be confirmed as installed and operational before invocation; fail fast with clear install guidance if not.
+2. **Contract & Parameter Typing (`server.ts` & `router.service.ts`):**
+   - Eliminate `any` types in `ResolvedBackend.adapter` by implementing the `CliAdapter` interface across all adapters (`codex.adapter.ts`, `claude.adapter.ts`, `gemini.adapter.ts`).
+   - Validate MCP tool call arguments at runtime instead of blind casting `request.params as any`.
+3. **POSIX Process Tree Termination & Stream Memory Bounds (`process.service.ts`):**
+   - On POSIX systems, `proc.kill('SIGTERM')` only signals the root shell process. Support process group termination (via `detached: true` and `process.kill(-proc.pid, 'SIGTERM')`) where applicable to guarantee complete cleanup of spawned CLI child sub-trees.
+   - Enforce bounded memory buffers (`MAX_STDOUT_BYTES = 512 * 1024`) in `runCommand` to avoid memory exhaustion from runaway processes.
+4. **CI Matrix & Windows Node 20 Compatibility (`ci.yml`):**
+   - In GitHub Actions, Node 20 on Windows fails with `Could not find ...\test\*.test.js` because `cmd.exe` does not expand globs and Node 20's `--test` runner expects already-expanded file paths. Running tests via `tsx --test` or letting the native test runner discover files resolves the failure.
+   - Replace legacy `node --check index.js src/*.js` in `.github/workflows/ci.yml` with modern `npm run typecheck` and `npm run build`.
+
+

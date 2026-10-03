@@ -1,9 +1,7 @@
-'use strict';
-
 /**
  * Returns a human-readable stage description based on elapsed time and task type.
  */
-function getProgressStage(elapsed, type = 'general', backend = 'Agent') {
+export function getProgressStage(elapsed: number, type = 'general', _backend = 'Agent'): string {
   let stage = 'Active';
   if (type === 'review') {
     if (elapsed < 6) stage = 'Collecting git diff & initializing sandbox';
@@ -21,19 +19,35 @@ function getProgressStage(elapsed, type = 'general', backend = 'Agent') {
   return `${stage} (${elapsed}s elapsed)`;
 }
 
+export type ProgressCallback = (message: string, progress?: number | null, total?: number | null) => void;
+
 /**
  * Creates an MCP-compliant progress reporter supporting indeterminate updates.
  */
-function createProgressReporter(server, progressToken) {
+export function createProgressReporter(server: any, progressToken: string | number | undefined | null): ProgressCallback {
   let observedUpdates = 0;
 
-  return function reportProgress(message, progress = null, total = null) {
+  return function reportProgress(messageOrInfo: any, progress: number | null = null, total: number | null = null): void {
     if (progressToken == null) return;
 
+    let message: string;
+    let explicitProgress = progress;
+
+    if (typeof messageOrInfo === 'string') {
+      message = messageOrInfo;
+    } else if (messageOrInfo && typeof messageOrInfo === 'object') {
+      message = String(messageOrInfo.message || '');
+      if (typeof messageOrInfo.percent === 'number') {
+        explicitProgress = messageOrInfo.percent;
+      }
+    } else {
+      message = String(messageOrInfo || '');
+    }
+
     observedUpdates++;
-    const params = {
+    const params: any = {
       progressToken,
-      progress: typeof progress === 'number' ? progress : observedUpdates,
+      progress: typeof explicitProgress === 'number' ? explicitProgress : observedUpdates,
       message,
     };
 
@@ -42,15 +56,10 @@ function createProgressReporter(server, progressToken) {
     }
 
     server
-      .notification({
+      ?.notification({
         method: 'notifications/progress',
         params,
       })
-      .catch(() => {});
+      ?.catch(() => {});
   };
 }
-
-module.exports = {
-  getProgressStage,
-  createProgressReporter,
-};

@@ -1,17 +1,15 @@
-'use strict';
+import * as codexAdapter from '../adapters/codex.adapter.js';
+import * as claudeAdapter from '../adapters/claude.adapter.js';
+import * as geminiAdapter from '../adapters/gemini.adapter.js';
 
-const codexAdapter = require('./adapters/codex.js');
-const claudeAdapter = require('./adapters/claude.js');
-const geminiAdapter = require('./adapters/gemini.js');
-
-async function runDoctor() {
+export async function runDoctor(): Promise<any> {
   const [codex, claude, gemini] = await Promise.all([
     codexAdapter.probe(),
     claudeAdapter.probe(),
     geminiAdapter.probe(),
   ]);
 
-  const activeBackends = [];
+  const activeBackends: string[] = [];
   if (codex.installed) activeBackends.push('codex');
   if (claude.installed) activeBackends.push('claude');
 
@@ -22,20 +20,20 @@ async function runDoctor() {
     overallStatus = 'partially_configured';
   }
 
-  const recommendations = [];
+  const recommendations: string[] = [];
   if (!codex.installed) {
     recommendations.push(
-      `OpenAI Codex CLI is missing. Install via terminal: '${codex.installCommand}' and run '${codex.authCommand}'.`
+      `OpenAI Codex CLI is missing. Install via terminal: 'npm install -g @openai/codex' and run 'codex login'.`
     );
   }
   if (!claude.installed) {
     recommendations.push(
-      `Claude Code CLI is missing. Install via terminal: '${claude.installCommand}' and run '${claude.authCommand}'.`
+      `Claude Code CLI is missing. Install via terminal: 'npm install -g @anthropic-ai/claude-code' and run 'claude auth login'.`
     );
   }
   if (!gemini.installed) {
     recommendations.push(
-      `Gemini CLI is missing. Install via terminal: '${gemini.installCommand}' and run '${gemini.authCommand}'.`
+      `Gemini CLI is missing. Install via terminal: 'npm install -g @google/gemini-cli' and run 'gemini'.`
     );
   }
 
@@ -56,7 +54,3 @@ async function runDoctor() {
     recommendations,
   };
 }
-
-module.exports = {
-  runDoctor,
-};

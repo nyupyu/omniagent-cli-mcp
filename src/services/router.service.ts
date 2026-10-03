@@ -1,11 +1,17 @@
-'use strict';
+import * as codexAdapter from '../adapters/codex.adapter.js';
+import * as claudeAdapter from '../adapters/claude.adapter.js';
+import { loadConfig, setDefaultBackend } from './config.service.js';
+import { selectSmartQuotaBackend } from './quota.service.js';
+import { AdapterProbeResult, CliAdapter } from '../types/adapter.types.js';
 
-const codexAdapter = require('./adapters/codex.js');
-const claudeAdapter = require('./adapters/claude.js');
-const { loadConfig, setDefaultBackend } = require('./config.js');
-const { selectSmartQuotaBackend } = require('./quota.js');
+export interface ResolvedBackend {
+  id: string;
+  adapter: CliAdapter;
+  probe: AdapterProbeResult;
+  isSmartQuota?: boolean;
+}
 
-async function resolveBackend(requestedBackend) {
+export async function resolveBackend(requestedBackend?: string | null): Promise<ResolvedBackend> {
   const config = loadConfig();
   const allowed = new Set(config.routing?.allowedBackends || ['codex', 'claude']);
 
@@ -13,6 +19,26 @@ async function resolveBackend(requestedBackend) {
     codexAdapter.probe(),
     claudeAdapter.probe(),
   ]);
+
+  const candidatePool = ['codex', 'claude'];
+  const candidates = candidatePool.filter((b) => allowed.has(b));
+
+  async function resolveSmartQuota(): Promise<ResolvedBackend> {
+    if (candidates.length === 0) {
+      throw new Error(
+        `No permitted backends available for smart_quota (routing.allowedBackends: [${Array.from(allowed).join(', ')}]).`
+      );
+    }
+    const selectedId = await selectSmartQuotaBackend(candidates);
+    const adapter = selectedId === 'codex' ? codexAdapter.codexAdapter : claudeAdapter.claudeAdapter;
+    const probe = selectedId === 'codex' ? codexProbe : claudeProbe;
+    if (!probe.installed) {
+      throw new Error(
+        `Selected smart_quota backend '${selectedId}' is not installed or operational. Run 'omniagent_doctor' for diagnostic details.`
+      );
+    }
+    return { id: selectedId, adapter, probe, isSmartQuota: true };
+  }
 
   const rawTarget = typeof requestedBackend === 'string' && requestedBackend.trim()
     ? requestedBackend.trim().toLowerCase()
@@ -24,9 +50,9 @@ async function resolveBackend(requestedBackend) {
       throw new Error(`Backend 'codex' is not permitted by configuration (routing.allowedBackends: [${Array.from(allowed).join(', ')}]).`);
     }
     if (!codexProbe.installed) {
-      throw new Error(`OpenAI Codex CLI is not installed. Run '${codexProbe.installCommand}' in your terminal.`);
+      throw new Error(`OpenAI Codex CLI is not installed. Run 'npm install -g @openai/codex' in your terminal.`);
     }
-    return { id: 'codex', adapter: codexAdapter, probe: codexProbe };
+    return { id: 'codex', adapter: codexAdapter.codexAdapter, probe: codexProbe };
   }
 
   if (rawTarget === 'claude') {
@@ -34,16 +60,19 @@ async function resolveBackend(requestedBackend) {
       throw new Error(`Backend 'claude' is not permitted by configuration (routing.allowedBackends: [${Array.from(allowed).join(', ')}]).`);
     }
     if (!claudeProbe.installed) {
-      throw new Error(`Claude Code CLI is not installed. Run '${claudeProbe.installCommand}' in your terminal.`);
+      throw new Error(`Claude Code CLI is not installed. Run 'npm install -g @anthropic-ai/claude-code' in your terminal.`);
     }
-    return { id: 'claude', adapter: claudeAdapter, probe: claudeProbe };
+    return { id: 'claude', adapter: claudeAdapter.claudeAdapter, probe: claudeProbe };
   }
 
   if (rawTarget === 'smart_quota') {
-    const selectedId = await selectSmartQuotaBackend(['codex', 'claude']);
-    const adapter = selectedId === 'codex' ? codexAdapter : claudeAdapter;
-    const probe = selectedId === 'codex' ? codexProbe : claudeProbe;
-    return { id: selectedId, adapter, probe, isSmartQuota: true };
+    return await resolveSmartQuota();
+  }
+
+  if (rawTarget !== 'auto') {
+    throw new Error(
+      `Invalid backend '${requestedBackend}'. Supported options are: 'auto', 'codex', 'claude', 'smart_quota'.`
+    );
   }
 
   // 2. Target is 'auto': check persistent user configuration
@@ -51,10 +80,7 @@ async function resolveBackend(requestedBackend) {
     const configuredTarget = config.defaultBackend.toLowerCase();
 
     if (configuredTarget === 'smart_quota') {
-      const selectedId = await selectSmartQuotaBackend(['codex', 'claude']);
-      const adapter = selectedId === 'codex' ? codexAdapter : claudeAdapter;
-      const probe = selectedId === 'codex' ? codexProbe : claudeProbe;
-      return { id: selectedId, adapter, probe, isSmartQuota: true };
+      return await resolveSmartQuota();
     }
 
     if (configuredTarget === 'codex') {
@@ -63,12 +89,12 @@ async function resolveBackend(requestedBackend) {
       }
       if (!codexProbe.installed) {
         throw new Error(
-          `Configured default backend 'codex' is not installed or operational. Run '${codexProbe.installCommand}' or ` +
+          `Configured default backend 'codex' is not installed or operational. Run 'npm install -g @openai/codex' or ` +
           `update your preferred backend using tool 'omniagent_set_default'. To preserve privacy and prevent unauthorized ` +
           `cross-provider code transmission, OmniAgent will not silently reroute to another provider.`
         );
       }
-      return { id: 'codex', adapter: codexAdapter, probe: codexProbe };
+      return { id: 'codex', adapter: codexAdapter.codexAdapter, probe: codexProbe };
     }
 
     if (configuredTarget === 'claude') {
@@ -77,26 +103,26 @@ async function resolveBackend(requestedBackend) {
       }
       if (!claudeProbe.installed) {
         throw new Error(
-          `Configured default backend 'claude' is not installed or operational. Run '${claudeProbe.installCommand}' or ` +
+          `Configured default backend 'claude' is not installed or operational. Run 'npm install -g @anthropic-ai/claude-code' or ` +
           `update your preferred backend using tool 'omniagent_set_default'. To preserve privacy and prevent unauthorized ` +
           `cross-provider code transmission, OmniAgent will not silently reroute to another provider.`
         );
       }
-      return { id: 'claude', adapter: claudeAdapter, probe: claudeProbe };
+      return { id: 'claude', adapter: claudeAdapter.claudeAdapter, probe: claudeProbe };
     }
 
     throw new Error(`Unknown configured default backend: '${config.defaultBackend}'.`);
   }
 
   // 3. First-run onboarding resolution (only reached when config.defaultBackend is null)
-  const installedAllowed = [];
+  const installedAllowed: string[] = [];
   if (codexProbe.installed && allowed.has('codex')) installedAllowed.push('codex');
   if (claudeProbe.installed && allowed.has('claude')) installedAllowed.push('claude');
 
   if (installedAllowed.length === 0) {
     throw new Error(
-      `No active permitted CLI backends found. Please install either OpenAI Codex CLI ('${codexProbe.installCommand}') ` +
-      `or Claude Code CLI ('${claudeProbe.installCommand}'). Use tool 'omniagent_doctor' for detailed diagnostics.`
+      `No active permitted CLI backends found. Please install either OpenAI Codex CLI ('npm install -g @openai/codex') ` +
+      `or Claude Code CLI ('npm install -g @anthropic-ai/claude-code'). Use tool 'omniagent_doctor' for detailed diagnostics.`
     );
   }
 
@@ -105,10 +131,10 @@ async function resolveBackend(requestedBackend) {
     const single = installedAllowed[0];
     try {
       setDefaultBackend(single);
-    } catch (err) {
+    } catch (err: any) {
       throw new Error(`Failed to persist default backend configuration: ${err.message}`);
     }
-    const adapter = single === 'codex' ? codexAdapter : claudeAdapter;
+    const adapter = single === 'codex' ? codexAdapter.codexAdapter : claudeAdapter.claudeAdapter;
     const probe = single === 'codex' ? codexProbe : claudeProbe;
     return { id: single, adapter, probe };
   }
@@ -120,7 +146,3 @@ async function resolveBackend(requestedBackend) {
     `or supply the 'backend' parameter explicitly for this request.`
   );
 }
-
-module.exports = {
-  resolveBackend,
-};

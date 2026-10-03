@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { sanitizeGitRef, collectGitScope } = require('../src/git.js');
+const { sanitizeGitRef, collectGitScope } = require('../src/services/git.service.ts');
 
 test('sanitizeGitRef accepts valid git references', () => {
   assert.equal(sanitizeGitRef('main'), 'main');

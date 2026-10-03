@@ -1,16 +1,17 @@
-'use strict';
+import path from 'path';
+import os from 'os';
+import fs from 'fs';
+import { spawn } from 'child_process';
+import { runCommand, killProcessSafely, activeProcesses, MAX_BUFFER_BYTES } from '../services/process.service.js';
+import { getProgressStage } from '../services/progress.service.js';
+import { AdapterProbeResult, ExecutionResult, ExecutionOptions, CliAdapter } from '../types/adapter.types.js';
 
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
-const { spawn } = require('child_process');
-const { runCommand, killProcessSafely, activeProcesses } = require('../process.js');
-const { getProgressStage } = require('../progress.js');
+export const id = 'claude';
+export const name = 'Claude Code CLI';
+export const CLAUDE_EXE = process.env.CLAUDE_PATH || 'claude';
+export const CLAUDE_CONFIG_DIR = path.join(os.homedir(), '.claude');
 
-const CLAUDE_EXE = process.env.CLAUDE_PATH || 'claude';
-const CLAUDE_CONFIG_DIR = path.join(os.homedir(), '.claude');
-
-async function probe() {
+export async function probe(): Promise<AdapterProbeResult> {
   let installed = false;
   let version = 'unknown';
   let authType = 'unavailable';
@@ -37,14 +38,8 @@ async function probe() {
     version,
     command: CLAUDE_EXE,
     authStatus: authType,
-    availableModels: [
-      { id: 'claude-3-7-sonnet', tier: 'default', description: 'Hybrid reasoning and coding model' },
-      { id: 'claude-3-5-sonnet', tier: 'standard', description: 'Fast code generation and analysis' },
-      { id: 'claude-3-opus', tier: 'top-tier', description: 'Deep reasoning model (Requires user confirmation)' },
-    ],
+    availableModels: ['claude-3-7-sonnet', 'claude-3-5-sonnet', 'claude-3-opus'],
     supportedReasoningEfforts: ['low', 'medium', 'high', 'max'],
-    installCommand: 'npm install -g @anthropic-ai/claude-code',
-    authCommand: 'claude auth login',
   };
 }
 
@@ -52,7 +47,7 @@ async function probe() {
  * Executes Claude Code CLI in headless, read-only mode.
  * Strictly restricts tools to Read, Glob, Grep to enforce the Maker-Checker read-only guarantee.
  */
-function executeClaude(prompt, options = {}) {
+export function executeClaude(prompt: string, options: ExecutionOptions = {}): Promise<ExecutionResult> {
   const {
     cwd = process.cwd(),
     model = null,
@@ -72,10 +67,10 @@ function executeClaude(prompt, options = {}) {
       args.push('--model', model.trim());
     }
 
-    const env = { ...process.env };
+    const env: NodeJS.ProcessEnv = { ...process.env };
     // Map reasoning effort to MAX_THINKING_TOKENS if provided
     if (reasoningEffort) {
-      const effortMap = {
+      const effortMap: Record<string, string> = {
         low: '2048',
         medium: '8192',
         high: '16384',
@@ -86,7 +81,7 @@ function executeClaude(prompt, options = {}) {
       }
     }
 
-    let child;
+    let child: any;
     try {
       child = spawn(CLAUDE_EXE, args, {
         cwd,
@@ -94,6 +89,7 @@ function executeClaude(prompt, options = {}) {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
         shell: false,
+        detached: process.platform !== 'win32',
       });
     } catch (err) {
       return reject(err);
@@ -103,13 +99,13 @@ function executeClaude(prompt, options = {}) {
 
     let elapsed = 0;
     if (onProgress) {
-      onProgress(getProgressStage(0, 'general', 'Claude'));
+      onProgress(getProgressStage(0, 'general', 'Claude') as any);
     }
 
     const progressTimer = setInterval(() => {
       elapsed += 3;
       if (onProgress) {
-        onProgress(getProgressStage(elapsed, 'general', 'Claude'));
+        onProgress(getProgressStage(elapsed, 'general', 'Claude') as any);
       }
     }, 3000);
 
@@ -139,26 +135,44 @@ function executeClaude(prompt, options = {}) {
 
     let stdout = '';
     let stderr = '';
+    let stdoutBytes = 0;
+    let stderrBytes = 0;
 
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
 
-    child.stdout.on('data', (d) => {
-      stdout += d;
+    child.stdout.on('data', (d: string) => {
+      const chunkBytes = Buffer.byteLength(d, 'utf8');
+      if (stdoutBytes + chunkBytes <= MAX_BUFFER_BYTES) {
+        stdout += d;
+        stdoutBytes += chunkBytes;
+      } else if (stdoutBytes < MAX_BUFFER_BYTES) {
+        const remaining = MAX_BUFFER_BYTES - stdoutBytes;
+        stdout += Buffer.from(d, 'utf8').subarray(0, remaining).toString('utf8') + '\n...[stdout truncated]';
+        stdoutBytes = MAX_BUFFER_BYTES;
+      }
     });
 
-    child.stderr.on('data', (d) => {
-      stderr += d;
+    child.stderr.on('data', (d: string) => {
+      const chunkBytes = Buffer.byteLength(d, 'utf8');
+      if (stderrBytes + chunkBytes <= MAX_BUFFER_BYTES) {
+        stderr += d;
+        stderrBytes += chunkBytes;
+      } else if (stderrBytes < MAX_BUFFER_BYTES) {
+        const remaining = MAX_BUFFER_BYTES - stderrBytes;
+        stderr += Buffer.from(d, 'utf8').subarray(0, remaining).toString('utf8') + '\n...[stderr truncated]';
+        stderrBytes = MAX_BUFFER_BYTES;
+      }
       const lines = d.trim().split(/\r?\n/).filter(Boolean);
       for (const line of lines) {
         const clean = line.trim();
         if (clean.length > 0 && clean.length < 80) {
-          onProgress?.(`[Claude] ${clean}`);
+          onProgress?.(`[Claude] ${clean}` as any);
         }
       }
     });
 
-    child.on('error', (err) => {
+    child.on('error', (err: any) => {
       cleanup();
       if (err.code === 'ENOENT') {
         reject(
@@ -171,10 +185,10 @@ function executeClaude(prompt, options = {}) {
       }
     });
 
-    child.on('close', (code, signal) => {
+    child.on('close', (code: number | null, signal: string | null) => {
       cleanup();
       if (onProgress) {
-        onProgress('Completed! Formatting output...', 100, 100);
+        onProgress('Completed! Formatting output...' as any);
       }
 
       const output = stdout.trim();
@@ -197,8 +211,15 @@ function executeClaude(prompt, options = {}) {
   });
 }
 
-module.exports = {
+export function execute(prompt: string, options: ExecutionOptions = {}): Promise<ExecutionResult> {
+  return executeClaude(prompt, options);
+}
+
+export const claudeAdapter: CliAdapter = {
+  id,
+  name,
   probe,
-  executeClaude,
-  CLAUDE_EXE,
+  execute,
 };
+
+export default claudeAdapter;

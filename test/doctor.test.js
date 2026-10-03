@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { runDoctor } = require('../src/doctor.js');
+const { runDoctor } = require('../src/services/doctor.service.ts');
 
 test('runDoctor returns structured diagnostic report for all three CLIs', async () => {
   const report = await runDoctor();

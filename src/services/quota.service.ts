@@ -1,22 +1,21 @@
-'use strict';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import * as codexAdapter from '../adapters/codex.adapter.js';
+import * as claudeAdapter from '../adapters/claude.adapter.js';
+import { loadConfig } from './config.service.js';
+import { QuotaReport, QuotaCacheRecord } from '../types/quota.types.js';
 
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const codexAdapter = require('./adapters/codex.js');
-const claudeAdapter = require('./adapters/claude.js');
-const { loadConfig } = require('./config.js');
-
-function getQuotaCacheFile() {
+export function getQuotaCacheFile(): string {
   return process.env.OMNIAGENT_QUOTA_CACHE || path.join(os.homedir(), '.omniagent', 'quota-cache.json');
 }
 
-const QUOTA_CACHE_TTL_MS = 60 * 1000; // 60s cache TTL
+export const QUOTA_CACHE_TTL_MS = 60 * 1000; // 60s cache TTL
 
 /**
  * Sanitizes cached entries by immediately clearing expired rate-limiting cooldowns.
  */
-function sanitizeCacheData(data) {
+export function sanitizeCacheData(data: any): QuotaReport {
   if (!data || typeof data !== 'object') return {};
   const now = Date.now();
   for (const id of Object.keys(data)) {
@@ -37,7 +36,7 @@ function sanitizeCacheData(data) {
 /**
  * Reads cached quota records from disk with active cooldown validation.
  */
-function readQuotaCache() {
+export function readQuotaCache(): QuotaCacheRecord | null {
   const cacheFile = getQuotaCacheFile();
   if (fs.existsSync(cacheFile)) {
     try {
@@ -54,7 +53,7 @@ function readQuotaCache() {
 /**
  * Writes quota records to disk.
  */
-function writeQuotaCache(data) {
+export function writeQuotaCache(data: QuotaReport): void {
   const cacheFile = getQuotaCacheFile();
   try {
     const dir = path.dirname(cacheFile);
@@ -71,7 +70,7 @@ function writeQuotaCache(data) {
  * Inspects rate limits for active backends without burning generation tokens.
  * Quotas remain null unless recorded via real telemetry or runtime rate-limit events.
  */
-async function inspectQuotas(forceRefresh = false, probesOverride = null) {
+export async function inspectQuotas(forceRefresh = false, probesOverride: any = null): Promise<QuotaReport> {
   const rawCache = readQuotaCache();
   const cachedData = rawCache?.data || {};
   const hasAllBackends = !!(cachedData.codex && cachedData.claude);
@@ -85,7 +84,7 @@ async function inspectQuotas(forceRefresh = false, probesOverride = null) {
     ? [probesOverride.codex, probesOverride.claude]
     : await Promise.all([codexAdapter.probe(), claudeAdapter.probe()]);
 
-  const result = {
+  const result: QuotaReport = {
     codex: {
       installed: !!codexProbe?.installed,
       status: codexProbe?.installed ? 'operational' : 'uninstalled',
@@ -129,10 +128,8 @@ async function inspectQuotas(forceRefresh = false, probesOverride = null) {
 
 /**
  * Checks if an error output string indicates a rate limit or quota exhaustion.
- * Splits text into diagnostic lines, stops before generated partial output,
- * and strictly verifies authoritative status and error signatures.
  */
-function isRateLimitError(text) {
+export function isRateLimitError(text?: string | null): boolean {
   if (!text || typeof text !== 'string') return false;
 
   const lines = text.split(/\r?\n/);
@@ -142,22 +139,18 @@ function isRateLimitError(text) {
       break; // Stop parsing before generated model responses
     }
 
-    // JSON formatted error responses: {"status": 429...} or {"code": "rate_limit_exceeded"...}
     if (/["'](?:status|code|statusCode)["']\s*:\s*(?:429(?!\d)|["']rate_limit_exceeded["'])/i.test(trimmed)) {
       return true;
     }
 
-    // Status code 429 (ensuring no trailing file extensions like .txt)
     if (/\b(?:http\s*status\s*[:=]?\s*|status\s*(?:code)?\s*[:=]?\s*|api\s*error\s*[:=]?\s*|http[\s/]+(?:1\.[01]|2(?:\.0)?)?\s*)429(?!\.[a-zA-Z0-9])(?:\s|$|[:,\r\n"]|too\s+many\s+requests)/i.test(trimmed)) {
       return true;
     }
 
-    // Plain 429 Too Many Requests
     if (/\b429\s+too\s+many\s+requests\b/i.test(trimmed)) {
       return true;
     }
 
-    // Usage limit / quota exhaustion messages
     if (/\b(?:rate[\s_-]?limit\s*(?:exceeded|reached)|usage\s*limit\s*reached|hit\s*(?:your\s*)?usage\s*limit)\b/i.test(trimmed)) {
       return true;
     }
@@ -177,12 +170,11 @@ function isRateLimitError(text) {
 
 /**
  * Records a rate-limiting cooldown (e.g. after receiving a 429 response or usage limit error).
- * Tracks cooldownUntil separately from unknown provider resetsAt.
  */
-function recordQuotaCooldown(backendId, cooldownMs = 15 * 60 * 1000, reason = 'Rate limit detected') {
+export function recordQuotaCooldown(backendId: string, cooldownMs = 15 * 60 * 1000, reason = 'Rate limit detected'): void {
   const rawCache = readQuotaCache();
   const current = rawCache?.data || {};
-  const backend = current[backendId] || { installed: true, window: '5h' };
+  const backend = current[backendId] || { installed: true, window: '5h', measured: false };
 
   backend.status = 'rate_limited';
   backend.cooldownUntil = new Date(Date.now() + cooldownMs).toISOString();
@@ -199,7 +191,7 @@ function recordQuotaCooldown(backendId, cooldownMs = 15 * 60 * 1000, reason = 'R
 /**
  * Automatically inspects process execution output and records rate-limit cooldown if detected.
  */
-function checkAndRecordRateLimit(backendId, output) {
+export function checkAndRecordRateLimit(backendId: string, output?: string | null): boolean {
   if (isRateLimitError(output)) {
     recordQuotaCooldown(backendId, 15 * 60 * 1000, 'Rate limit detected in execution output');
     return true;
@@ -209,9 +201,8 @@ function checkAndRecordRateLimit(backendId, output) {
 
 /**
  * Chooses the backend with the highest headroom or earliest reset in the 5h window.
- * Strictly respects allowedBackends and filters exhausted/rate-limited backends before selection.
  */
-async function selectSmartQuotaBackend(candidates = null, options = {}) {
+export async function selectSmartQuotaBackend(candidates: string[] | null = null, options: any = {}): Promise<string> {
   const config = options.config || loadConfig();
   const allowed = new Set(config.routing?.allowedBackends || ['codex', 'claude']);
 
@@ -229,7 +220,6 @@ async function selectSmartQuotaBackend(candidates = null, options = {}) {
     throw new Error('No active CLI backends installed for smart_quota routing.');
   }
 
-  // Filter out any provider explicitly rate_limited or at 100% BEFORE returning single candidate
   const unblocked = installed.filter((id) => {
     const q = quotas[id];
     if (q.status === 'rate_limited') return false;
@@ -250,7 +240,6 @@ async function selectSmartQuotaBackend(candidates = null, options = {}) {
     return unblocked[0];
   }
 
-  // Compare headrooms if measured
   const [first, second] = unblocked;
   const headroomA = quotas[first].headroomPercent;
   const headroomB = quotas[second].headroomPercent;
@@ -264,19 +253,8 @@ async function selectSmartQuotaBackend(candidates = null, options = {}) {
     return resetA <= resetB ? first : second;
   }
 
-  // If one is measured and unblocked while other is unmeasured, prefer measured
   if (headroomA !== null && headroomB === null) return first;
   if (headroomB !== null && headroomA === null) return second;
 
-  // If neither is measured, fall back to candidate preference order
   return unblocked[0];
 }
-
-module.exports = {
-  inspectQuotas,
-  recordQuotaCooldown,
-  isRateLimitError,
-  checkAndRecordRateLimit,
-  selectSmartQuotaBackend,
-  getQuotaCacheFile,
-};
