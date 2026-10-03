@@ -4,13 +4,28 @@ import { loadConfig, setDefaultBackend } from './config.service.js';
 import { selectSmartQuotaBackend } from './quota.service.js';
 import { AdapterProbeResult, CliAdapter } from '../types/adapter.types.js';
 
+/**
+ * Represents a resolved agent CLI backend with its active adapter and system probe.
+ */
 export interface ResolvedBackend {
+  /** Identifier of the resolved backend ('codex' or 'claude'). */
   id: string;
+  /** Concrete adapter instance conforming to CliAdapter contract. */
   adapter: CliAdapter;
+  /** Host environment probe results for this backend. */
   probe: AdapterProbeResult;
+  /** Whether this backend was dynamically selected via smart_quota. */
   isSmartQuota?: boolean;
 }
 
+/**
+ * Resolves the appropriate CLI adapter based on caller request, user configuration,
+ * installation state, and quota availability.
+ *
+ * @param requestedBackend - Optional target ('auto', 'codex', 'claude', 'smart_quota')
+ * @returns Resolved backend structure with adapter and probe
+ * @throws Error if requested backend is invalid, uninstalled, or forbidden by policy
+ */
 export async function resolveBackend(requestedBackend?: string | null): Promise<ResolvedBackend> {
   const config = loadConfig();
   const allowed = new Set(config.routing?.allowedBackends || ['codex', 'claude']);

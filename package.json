@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nyupyu/omniagent-cli-mcp.git"
+    "url": "https://github.com/nyupyu/omniagent.git"
   },
   "author": {
     "name": "Oktawian Wybieralski",
@@ -31,7 +31,7 @@
     "node": ">=20.0.0"
   },
   "bugs": {
-    "url": "https://github.com/nyupyu/omniagent-cli-mcp/issues"
+    "url": "https://github.com/nyupyu/omniagent/issues"
   },
   "scripts": {
     "build": "node -r ./scripts/node20-polyfill.cjs ./node_modules/tsdown/dist/run.mjs src/index.ts --format cjs --target node20 --clean --sourcemap --no-config",
